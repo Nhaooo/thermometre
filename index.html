@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🌡️ Le Thermomètre</title>
+<meta name="description" content="Le jeu du Thermomètre – questions froides & hot entre amis !"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Permanent+Marker&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  /* ===== RESET & BASE ===== */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --hot:#ff4500;--hot2:#ff8c00;
+    --cold:#1e90ff;--cold2:#00bcd4;
+    --bg:#0d0d1a;--card:#16162a;--card2:#1e1e35;
+    --text:#f0f0ff;--muted:#8888aa;
+    --joker:#a855f7;
+  }
+  body{
+    font-family:'Nunito',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  /* ===== GRADIENT BG ===== */
+  body::before{
+    content:'';
+    position:fixed;inset:0;
+    background:radial-gradient(ellipse at 20% 10%, rgba(255,69,0,.18) 0%, transparent 60%),
+               radial-gradient(ellipse at 80% 90%, rgba(30,144,255,.18) 0%, transparent 60%);
+    pointer-events:none;z-index:0;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen{position:relative;z-index:1;display:none;min-height:100vh;}
+  .screen.active{display:flex;}
+  #screen-home{flex-direction:column;align-items:center;justify-content:center;gap:2rem;padding:2rem;}
+  #screen-lobby{flex-direction:column;align-items:center;gap:1.5rem;padding:2rem;}
+  #screen-game{flex-direction:row;gap:0;padding:0;}
+  #screen-finish{flex-direction:column;align-items:center;justify-content:center;gap:2rem;padding:2rem;}
+
+  /* ===== CARDS ===== */
+  .card{background:var(--card);border-radius:1.5rem;padding:2rem;border:1px solid rgba(255,255,255,.07);box-shadow:0 8px 32px rgba(0,0,0,.4);}
+
+  /* ===== BUTTONS ===== */
+  .btn{
+    font-family:'Nunito',sans-serif;font-weight:900;font-size:1.1rem;
+    border:none;border-radius:999px;padding:.75rem 2rem;cursor:pointer;
+    transition:transform .15s,box-shadow .15s;letter-spacing:.02em;
+  }
+  .btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.5);}
+  .btn:active{transform:translateY(0);}
+  .btn-hot{background:linear-gradient(135deg,var(--hot),var(--hot2));color:#fff;}
+  .btn-cold{background:linear-gradient(135deg,var(--cold2),var(--cold));color:#fff;}
+  .btn-ghost{background:rgba(255,255,255,.08);color:var(--text);}
+  .btn-joker{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;}
+  .btn-disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+
+  /* ===== LOGO / TITLE ===== */
+  .logo{
+    font-family:'Permanent Marker',cursive;
+    font-size:clamp(2.5rem,8vw,4.5rem);
+    background:linear-gradient(135deg,var(--hot) 0%,var(--hot2) 40%,var(--cold2) 70%,var(--cold) 100%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    text-shadow:none;line-height:1.1;text-align:center;
+  }
+  .logo-sub{font-size:1.1rem;color:var(--muted);text-align:center;margin-top:.5rem;}
+
+  /* ===== INPUT ===== */
+  .input{
+    background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);
+    border-radius:.75rem;padding:.75rem 1.25rem;color:var(--text);
+    font-family:'Nunito',sans-serif;font-size:1.05rem;width:100%;
+    outline:none;transition:border-color .2s;
+  }
+  .input:focus{border-color:var(--hot2);}
+  .input::placeholder{color:var(--muted);}
+
+  /* ===== LOBBY ===== */
+  #lobby-players{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin:1rem 0;}
+  .player-chip{
+    display:flex;align-items:center;gap:.6rem;
+    background:var(--card2);border-radius:999px;padding:.5rem 1.2rem;
+    font-weight:700;border:2px solid transparent;transition:border-color .3s;
+  }
+  .player-chip.ready{border-color:#2ecc71;}
+  .player-avatar{width:32px;height:32px;border-radius:50%;}
+  .player-ready-badge{font-size:.7rem;color:#2ecc71;}
+
+  /* ===== GAME LAYOUT ===== */
+  #game-board-col{flex:1;display:flex;align-items:center;justify-content:center;padding:1rem;overflow:hidden;}
+  #game-side{width:260px;min-width:220px;background:var(--card);border-left:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;padding:1.25rem;gap:1rem;overflow-y:auto;}
+
+  /* ===== CANVAS ===== */
+  #board-canvas{max-width:100%;max-height:calc(100vh - 2rem);border-radius:1.5rem;box-shadow:0 0 40px rgba(255,100,0,.2);}
+
+  /* ===== SIDE PANEL ===== */
+  .side-title{font-family:'Permanent Marker',cursive;font-size:1.2rem;color:var(--hot2);margin-bottom:.25rem;}
+  .side-player{
+    display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;
+    border-radius:.75rem;background:var(--card2);transition:background .3s;
+    border:2px solid transparent;
+  }
+  .side-player.active-player{border-color:var(--hot2);background:rgba(255,140,0,.1);}
+  .side-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+  .side-name{font-weight:700;flex:1;font-size:.95rem;}
+  .side-pos{font-size:.8rem;color:var(--muted);}
+  .joker-badge{font-size:.65rem;background:var(--joker);border-radius:999px;padding:1px 6px;color:#fff;margin-left:auto;}
+
+  /* ===== DICE ===== */
+  #dice-container{
+    display:flex;align-items:center;justify-content:center;
+    width:80px;height:80px;border-radius:1rem;
+    background:var(--card2);border:2px solid rgba(255,255,255,.15);
+    font-size:2.5rem;cursor:pointer;transition:transform .1s;
+    position:relative;user-select:none;
+  }
+  #dice-container.rolling{animation:diceRoll .6s ease-in-out;}
+  @keyframes diceRoll{
+    0%{transform:rotate(0) scale(1);}
+    25%{transform:rotate(15deg) scale(1.2);}
+    50%{transform:rotate(-10deg) scale(.9);}
+    75%{transform:rotate(8deg) scale(1.1);}
+    100%{transform:rotate(0) scale(1);}
+  }
+
+  /* ===== MODAL ===== */
+  #modal-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+    display:none;align-items:center;justify-content:center;padding:1rem;
+  }
+  #modal-overlay.open{display:flex;}
+  #modal-box{
+    background:var(--card);border-radius:2rem;padding:2.5rem;
+    max-width:480px;width:100%;text-align:center;
+    border:1.5px solid rgba(255,255,255,.1);
+    box-shadow:0 16px 64px rgba(0,0,0,.6);
+    animation:popIn .3s cubic-bezier(.68,-.55,.27,1.55);
+  }
+  @keyframes popIn{from{transform:scale(.7);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .modal-icon{font-size:3.5rem;margin-bottom:1rem;}
+  .modal-title{font-family:'Permanent Marker',cursive;font-size:1.8rem;margin-bottom:.5rem;}
+  .modal-desc{color:var(--muted);font-size:1rem;line-height:1.6;margin-bottom:1.5rem;}
+  .modal-hot .modal-title{color:var(--hot);}
+  .modal-cold .modal-title{color:var(--cold);}
+  .modal-gage .modal-title{color:var(--hot2);}
+  .modal-joker .modal-title{color:var(--joker);}
+
+  /* ===== CONFETTI ===== */
+  #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:200;}
+
+  /* ===== FINISH ===== */
+  .finish-title{font-family:'Permanent Marker',cursive;font-size:clamp(2rem,6vw,3.5rem);text-align:center;}
+  .trophy-anim{font-size:6rem;animation:bounce 1s infinite alternate;}
+  @keyframes bounce{from{transform:translateY(0);}to{transform:translateY(-20px);}}
+
+  /* ===== TOASTS ===== */
+  #toast-container{position:fixed;bottom:1.5rem;right:1.5rem;z-index:300;display:flex;flex-direction:column;gap:.5rem;}
+  .toast{
+    background:var(--card2);border-radius:.75rem;padding:.75rem 1.25rem;
+    font-size:.95rem;font-weight:700;border:1px solid rgba(255,255,255,.1);
+    animation:slideIn .3s ease;box-shadow:0 4px 12px rgba(0,0,0,.4);
+  }
+  @keyframes slideIn{from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+  /* ===== RESPONSIVE ===== */
+  @media(max-width:768px){
+    #screen-game{flex-direction:column;}
+    #game-side{width:100%;border-left:none;border-top:1px solid rgba(255,255,255,.07);max-height:200px;}
+    #game-board-col{padding:.5rem;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ====================================================
+     ÉCRAN D'ACCUEIL
+===================================================== -->
+<div id="screen-home" class="screen active">
+  <div class="logo">🌡️ Le Thermomètre</div>
+  <p class="logo-sub">Le jeu qui chauffe les soirées entre amis 🔥❄️</p>
+
+  <div class="card" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:1.25rem;">
+    <div>
+      <label style="font-weight:700;margin-bottom:.4rem;display:block;">Ton pseudo</label>
+      <input class="input" id="home-name" placeholder="Ex : Sophie 🌶️" maxlength="20"/>
+    </div>
+
+    <button class="btn btn-hot" id="btn-create">🔥 Créer une partie</button>
+
+    <div style="display:flex;align-items:center;gap:.75rem;color:var(--muted);">
+      <hr style="flex:1;border-color:rgba(255,255,255,.1)"/>
+      <span style="font-size:.85rem;">ou</span>
+      <hr style="flex:1;border-color:rgba(255,255,255,.1)"/>
+    </div>
+
+    <div style="display:flex;gap:.5rem;">
+      <input class="input" id="home-code" placeholder="Code à 6 chiffres" maxlength="6" style="flex:1;"/>
+      <button class="btn btn-cold" id="btn-join">❄️ Rejoindre</button>
+    </div>
+  </div>
+
+  <!-- Règles résumées -->
+  <div class="card" style="width:100%;max-width:420px;">
+    <p style="font-family:'Permanent Marker',cursive;color:var(--hot2);margin-bottom:.75rem;">📜 Règles rapides</p>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:.4rem;font-size:.9rem;color:var(--muted);">
+      <li>🎲 Lance le dé, avance sur le plateau</li>
+      <li>❄️ Case bleue = question froide (vie quotidienne)</li>
+      <li>🔥 Case barrée = question HOT (intimité)</li>
+      <li>🃏 <b style="color:var(--text)">G</b> = Gage, <b style="color:var(--text)">GH</b> = Gage Hot, <b style="color:var(--text)">GF</b> = Gage Froid</li>
+      <li>🤡 Chaque joueur a 1 <b style="color:var(--joker)">Joker</b> pour refuser</li>
+      <li>🏆 Premier à FINISH gagne !</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ====================================================
+     ÉCRAN LOBBY
+===================================================== -->
+<div id="screen-lobby" class="screen">
+  <div class="logo" style="font-size:2rem;">🌡️ Lobby</div>
+
+  <div class="card" style="text-align:center;width:100%;max-width:500px;">
+    <p style="color:var(--muted);font-size:.9rem;">Code de la partie</p>
+    <p id="lobby-code" style="font-family:'Permanent Marker',cursive;font-size:3rem;color:var(--hot2);letter-spacing:.3em;"></p>
+    <p style="font-size:.85rem;color:var(--muted);">Partage ce code avec tes amis !</p>
+  </div>
+
+  <div id="lobby-players"></div>
+
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
+    <button class="btn btn-ghost" id="btn-ready">✅ Prêt</button>
+    <button class="btn btn-hot" id="btn-start">🚀 Lancer la partie</button>
+  </div>
+  <p id="lobby-msg" style="color:var(--muted);font-size:.9rem;text-align:center;"></p>
+</div>
+
+<!-- ====================================================
+     ÉCRAN DE JEU
+===================================================== -->
+<div id="screen-game" class="screen">
+  <!-- Canvas plateau -->
+  <div id="game-board-col">
+    <canvas id="board-canvas" width="700" height="700"></canvas>
+  </div>
+
+  <!-- Panneau latéral -->
+  <div id="game-side">
+    <div>
+      <div class="side-title">Joueurs</div>
+      <div id="side-players" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+    </div>
+
+    <hr style="border-color:rgba(255,255,255,.07)"/>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+      <div class="side-title" style="text-align:center;">Tour de</div>
+      <div id="current-player-name" style="font-family:'Permanent Marker',cursive;font-size:1.4rem;text-align:center;"></div>
+
+      <!-- Dé -->
+      <div id="dice-container" title="Lancer le dé">🎲</div>
+      <button class="btn btn-hot" id="btn-roll" style="width:100%;">🎲 Lancer le dé</button>
+      <button class="btn btn-ghost" id="btn-end-turn" style="width:100%;display:none;">➡️ Fin de tour</button>
+    </div>
+
+    <hr style="border-color:rgba(255,255,255,.07)"/>
+
+    <div style="text-align:center;">
+      <button class="btn btn-joker" id="btn-joker" style="width:100%;">🤡 Utiliser mon Joker</button>
+      <p id="joker-status" style="font-size:.8rem;color:var(--muted);margin-top:.4rem;"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     ÉCRAN FINISH
+===================================================== -->
+<div id="screen-finish" class="screen">
+  <canvas id="confetti-canvas"></canvas>
+  <div class="trophy-anim">🏆</div>
+  <div class="finish-title">
+    <span id="winner-name" style="background:linear-gradient(135deg,var(--hot),var(--hot2),var(--cold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></span><br/>remporte la partie !
+  </div>
+  <p style="color:var(--muted);font-size:1.1rem;text-align:center;">Bravo champion·ne ! 🎉🔥</p>
+  <button class="btn btn-hot" id="btn-replay">🏠 Retour à l'accueil</button>
+</div>
+
+<!-- ====================================================
+     MODAL
+===================================================== -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div class="modal-icon" id="modal-icon"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div id="modal-actions" style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;"></div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div id="toast-container"></div>
+
+<script>
+// ============================================================
+//  CONSTANTES & HELPERS
+// ============================================================
+const DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+const SQUARE_COLORS = {
+  start:  { bg:'#1e3a5f', border:'#3498db', text:'#fff' },
+  finish: { bg:'#3d1a00', border:'#ff8c00', text:'#fff' },
+  cold:   { bg:'#0a2a4a', border:'#1e90ff', text:'#1e90ff' },
+  hot:    { bg:'#3d0f00', border:'#ff4500', text:'#ff7043' },
+  G:      { bg:'#2a1a3d', border:'#a855f7', text:'#c084fc' },
+  GH:     { bg:'#3d1500', border:'#ff6b00', text:'#ffa040' },
+  GF:     { bg:'#001540', border:'#0099ff', text:'#40bcff' },
+};
+
+function $(id){ return document.getElementById(id); }
+
+function toast(msg, duration=3200){
+  const el = document.createElement('div');
+  el.className='toast'; el.textContent=msg;
+  $('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), duration);
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(`screen-${name}`).classList.add('active');
+}
+
+// ============================================================
+//  MODAL
+// ============================================================
+function openModal(icon, title, desc, className='', actions=[]){
+  const box = $('modal-box');
+  box.className=''; box.classList.add(className||'');
+  $('modal-icon').textContent = icon;
+  $('modal-title').textContent = title;
+  $('modal-desc').textContent = desc;
+
+  const act = $('modal-actions');
+  act.innerHTML='';
+  actions.forEach(a=>{
+    const btn = document.createElement('button');
+    btn.className=`btn ${a.cls||'btn-ghost'}`;
+    btn.textContent=a.label;
+    btn.onclick=()=>{ a.action?.(); closeModal(); };
+    act.appendChild(btn);
+  });
+  $('modal-overlay').classList.add('open');
+}
+
+function closeModal(){
+  $('modal-overlay').classList.remove('open');
+}
+
+$('modal-overlay').addEventListener('click', e=>{
+  if(e.target === $('modal-overlay')) closeModal();
+});
+
+// ============================================================
+//  PLATEAU — DONNÉES
+// ============================================================
+// Chemin du serpent : 36 cases (0..35)
+// Coordonnées de grille 7x6 — serpent qui monte/descend
+// (col, row) dans une grille 7 cols x 6 rows
+const GRID_COLS = 7;
+const GRID_ROWS = 6;
+
+/**
+ * Génère les positions du serpent dans la grille.
+ * Commence en bas à gauche (START) et serpente vers la droite / fin en haut.
+ */
+function buildSnakePath(totalCells){
+  const path = [];
+  // On part du bas à gauche et on serpente vers le haut
+  for(let row=GRID_ROWS-1; row>=0; row--){
+    const rowCells=[];
+    for(let col=0; col<GRID_COLS; col++) rowCells.push({col,row});
+    // Rangées paires (depuis le bas, 0-indexed) : gauche → droite
+    // Rangées impaires : droite → gauche
+    const fromBottom = (GRID_ROWS-1) - row;
+    if(fromBottom % 2 === 1) rowCells.reverse();
+    path.push(...rowCells);
+    if(path.length >= totalCells) break;
+  }
+  return path.slice(0, totalCells);
+}
+
+let SNAKE_PATH = null;
+let boardState = null; // reçu du serveur
+
+// ============================================================
+//  CANVAS — DESSIN DU PLATEAU
+// ============================================================
+const canvas = $('board-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas(){
+  const col = $('game-board-col');
+  const maxW = col.clientWidth  - 32;
+  const maxH = window.innerHeight - 32;
+  const sz = Math.min(maxW, maxH, 700);
+  canvas.style.width  = sz+'px';
+  canvas.style.height = sz+'px';
+}
+
+function drawBoard(state){
+  if(!state) return;
+  boardState = state;
+
+  const W = canvas.width;
+  const H = canvas.height;
+  const padT=40, padB=40, padL=30, padR=30;
+  const boardW = W-padL-padR;
+  const boardH = H-padT-padB;
+  const cellW = boardW/GRID_COLS;
+  const cellH = boardH/GRID_ROWS;
+
+  if(!SNAKE_PATH) SNAKE_PATH = buildSnakePath(state.board.length);
+
+  ctx.clearRect(0,0,W,H);
+
+  // ── Fond général ──
+  const grd = ctx.createLinearGradient(0,0,W,H);
+  grd.addColorStop(0,'#0d0815');
+  grd.addColorStop(1,'#0a1520');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+
+  // ── Thermomètre décoratif (coin bas-droite) ──
+  drawThermometer(W-70, H-140, 30, 120);
+
+  // ── Cases ──
+  state.board.forEach((sq,i)=>{
+    if(i >= SNAKE_PATH.length) return;
+    const {col,row} = SNAKE_PATH[i];
+    const x = padL + col*cellW;
+    const y = padT + row*cellH;
+    drawCell(sq, x, y, cellW, cellH, i);
+  });
+
+  // ── Flèches de connexion entre rangées ──
+  drawArrows(padL, padT, cellW, cellH, state.board.length);
+
+  // ── Tokens des joueurs ──
+  drawTokens(state.players, padL, padT, cellW, cellH);
+
+  // ── Titre ──
+  ctx.font='bold 18px "Permanent Marker",cursive';
+  ctx.fillStyle='rgba(255,140,0,.7)';
+  ctx.textAlign='center';
+  ctx.fillText('🌡️ LE THERMOMÈTRE', W/2, 24);
+}
+
+function drawCell(sq, x, y, w, h, idx){
+  const pad=4;
+  const colors = SQUARE_COLORS[sq.type] || SQUARE_COLORS.cold;
+
+  // Ombre
+  ctx.shadowColor=colors.border+'88';
+  ctx.shadowBlur=8;
+
+  // Fond
+  const gr = ctx.createLinearGradient(x+pad,y+pad,x+w-pad,y+h-pad);
+  gr.addColorStop(0, colors.bg);
+  gr.addColorStop(1, shadeColor(colors.bg, 20));
+  ctx.fillStyle=gr;
+  roundRect(ctx, x+pad, y+pad, w-pad*2, h-pad*2, 8);
+  ctx.fill();
+
+  ctx.shadowBlur=0;
+
+  // Bordure
+  ctx.strokeStyle=colors.border;
+  ctx.lineWidth = (sq.type==='start'||sq.type==='finish') ? 2.5 : 1.5;
+  ctx.stroke();
+
+  // Hachures sur les cases HOT
+  if(sq.type==='hot'){
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle=colors.border+'33';
+    ctx.lineWidth=1;
+    for(let d=-h;d<w+h;d+=8){
+      ctx.beginPath();ctx.moveTo(x+pad+d,y+pad);ctx.lineTo(x+pad+d+h,y+h-pad);ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Numéro de case (petit)
+  ctx.fillStyle='rgba(255,255,255,.25)';
+  ctx.font=`bold 9px Nunito,sans-serif`;
+  ctx.textAlign='left';
+  ctx.fillText(idx, x+pad+4, y+pad+12);
+
+  // Label principal
+  ctx.fillStyle=colors.text;
+  ctx.textAlign='center';
+  if(sq.type==='start'||sq.type==='finish'){
+    ctx.font=`bold 10px Nunito,sans-serif`;
+  } else if(sq.type==='G'||sq.type==='GH'||sq.type==='GF'){
+    ctx.font=`900 13px Nunito,sans-serif`;
+  } else {
+    ctx.font=`14px Nunito,sans-serif`;
+  }
+  ctx.fillText(sq.label, x+w/2, y+h/2+5);
+}
+
+function drawArrows(padL, padT, cellW, cellH){
+  // Pas d'implémentation visuelle complexe — les cases parlent d'elles-mêmes
+}
+
+function drawTokens(players, padL, padT, cellW, cellH){
+  // Regrouper les joueurs par position
+  const byPos={};
+  players.forEach(p=>{ (byPos[p.position]=byPos[p.position]||[]).push(p); });
+
+  Object.entries(byPos).forEach(([pos,group])=>{
+    const idx=parseInt(pos);
+    if(idx>=SNAKE_PATH.length) return;
+    const {col,row}=SNAKE_PATH[idx];
+    const cx = padL + col*cellW + cellW/2;
+    const cy = padT + row*cellH + cellH/2;
+    const r  = Math.min(cellW,cellH)/2 * .28;
+    const n  = group.length;
+    const spread = r*1.4;
+
+    group.forEach((p,i)=>{
+      const angle = (i/n)*Math.PI*2 - Math.PI/2;
+      const tx = cx + (n>1?Math.cos(angle)*spread:0);
+      const ty = cy + (n>1?Math.sin(angle)*spread:0);
+
+      // Glow
+      ctx.shadowColor=p.color;ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(tx,ty,r+2,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,.5)';ctx.fill();
+      ctx.shadowBlur=0;
+
+      // Corps
+      ctx.beginPath();ctx.arc(tx,ty,r,0,Math.PI*2);
+      ctx.fillStyle=p.color;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+
+      // Initiale
+      ctx.fillStyle='#fff';
+      ctx.font=`bold ${Math.max(8,r*.9)}px Nunito,sans-serif`;
+      ctx.textAlign='center';
+      ctx.fillText(p.name[0].toUpperCase(), tx, ty+r*.35);
+    });
+  });
+}
+
+function drawThermometer(x, y, w, h){
+  // Bulbe
+  ctx.beginPath();ctx.arc(x+w/2, y+h, w/2+4, 0, Math.PI*2);
+  ctx.fillStyle='#ff4500';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1.5;ctx.stroke();
+
+  // Tube
+  const tw=w/3;
+  ctx.fillStyle='rgba(255,255,255,.06)';
+  ctx.fillRect(x+w/2-tw/2, y, tw, h);
+  ctx.strokeStyle='rgba(255,255,255,.2)';ctx.strokeRect(x+w/2-tw/2, y, tw, h);
+
+  // Mercure (rouge→bleu)
+  const mg=ctx.createLinearGradient(0,y,0,y+h);
+  mg.addColorStop(0,'#1e90ff');mg.addColorStop(.5,'#9b59b6');mg.addColorStop(1,'#ff4500');
+  ctx.fillStyle=mg;
+  ctx.fillRect(x+w/2-tw/2+2, y+1, tw-4, h-1);
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+function shadeColor(hex, pct){
+  // Éclaircit légèrement une couleur hex
+  let r=parseInt(hex.slice(1,3),16);
+  let g=parseInt(hex.slice(3,5),16);
+  let b=parseInt(hex.slice(5,7),16);
+  r=Math.min(255,r+pct);g=Math.min(255,g+pct);b=Math.min(255,b+pct);
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
+// ============================================================
+//  CONFETTIS
+// ============================================================
+function launchConfetti(){
+  const c = $('confetti-canvas');
+  c.width=window.innerWidth; c.height=window.innerHeight;
+  const ctx2=c.getContext('2d');
+  const particles=Array.from({length:150},()=>({
+    x:Math.random()*c.width, y:Math.random()*c.height-c.height,
+    r:Math.random()*6+3, col:['#ff4500','#ff8c00','#1e90ff','#2ecc71','#a855f7','#f1c40f'][Math.floor(Math.random()*6)],
+    vx:(Math.random()-.5)*4, vy:Math.random()*4+2, rot:Math.random()*360, vrot:Math.random()*6-3
+  }));
+  let frame=0;
+  function loop(){
+    ctx2.clearRect(0,0,c.width,c.height);
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.vrot;
+      if(p.y>c.height+10){p.y=-10;p.x=Math.random()*c.width;}
+      ctx2.save();ctx2.translate(p.x,p.y);ctx2.rotate(p.rot*Math.PI/180);
+      ctx2.fillStyle=p.col;ctx2.fillRect(-p.r,-p.r/2,p.r*2,p.r);
+      ctx2.restore();
+    });
+    frame++;
+    if(frame<300) requestAnimationFrame(loop);
+    else ctx2.clearRect(0,0,c.width,c.height);
+  }
+  loop();
+}
+
+// ============================================================
+//  SOCKET.IO — CONNEXION
+// ============================================================
+const socket = io();
+let myId = null;
+let myGameCode = null;
+let currentState = null;
+let waitingForTurnEnd = false;
+
+socket.on('connect', ()=>{ myId=socket.id; });
+
+socket.on('game_state', (state)=>{
+  currentState = state;
+  if(state.phase==='lobby'){
+    renderLobby(state);
+  } else if(state.phase==='playing'){
+    if($('screen-game').classList.contains('active')||$('screen-lobby').classList.contains('active')){
+      showScreen('game');
+    }
+    renderGame(state);
+  } else if(state.phase==='finished'){
+    // handled by game_finished
+  }
+});
+
+socket.on('game_finished', ({winner})=>{
+  $('winner-name').textContent = winner;
+  showScreen('finish');
+  launchConfetti();
+});
+
+socket.on('joker_used', ({playerName})=>{
+  toast(`🤡 ${playerName} utilise son Joker !`);
+  // Vote si je ne suis pas le joueur joker
+  openModal('🤡','Vote Joker !',
+    `${playerName} veut refuser ce gage/question. Tu acceptes ?`,
+    'modal-joker',
+    [
+      {label:'✅ Accepter',cls:'btn-cold',action:()=>socket.emit('vote_joker',{accept:true})},
+      {label:'❌ Rejeter',cls:'btn-hot',action:()=>socket.emit('vote_joker',{accept:false})},
+    ]
+  );
+});
+
+socket.on('joker_vote', ({voterId, accept})=>{
+  toast(accept ? '✅ Vote : accepté !' : '❌ Vote : rejeté !');
+});
+
+// ============================================================
+//  RENDU LOBBY
+// ============================================================
+function renderLobby(state){
+  $('lobby-code').textContent = state.code;
+  const container=$('lobby-players');
+  container.innerHTML='';
+  state.players.forEach(p=>{
+    const chip=document.createElement('div');
+    chip.className='player-chip'+(p.ready?' ready':'');
+    chip.innerHTML=`
+      <canvas class="player-avatar" width="32" height="32"></canvas>
+      <span>${escHTML(p.name)}</span>
+      ${p.ready?'<span class="player-ready-badge">✅ Prêt</span>':''}
+    `;
+    const av=chip.querySelector('.player-avatar');
+    drawAvatar(av,p.color,p.name[0]);
+    container.appendChild(chip);
+  });
+
+  // Visibilité bouton start (host seulement)
+  const isHost = state.players[0]?.id === myId;
+  $('btn-start').style.display = isHost ? '' : 'none';
+  $('lobby-msg').textContent = isHost
+    ? (state.players.every(p=>p.ready) ? '🚀 Tout le monde est prêt !' : `En attente que tout le monde soit prêt…`)
+    : "En attente du lancement par l'hôte…";
+}
+
+function drawAvatar(canvas, color, initial){
+  const c=canvas.getContext('2d');
+  c.fillStyle=color;c.beginPath();c.arc(16,16,14,0,Math.PI*2);c.fill();
+  c.fillStyle='#fff';c.font='bold 13px Nunito,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  c.fillText(initial.toUpperCase(),16,16);
+}
+
+// ============================================================
+//  RENDU JEU
+// ============================================================
+function renderGame(state){
+  // Panneau joueurs
+  const sp=$('side-players');sp.innerHTML='';
+  state.players.forEach((p,i)=>{
+    const d=document.createElement('div');
+    d.className='side-player'+(i===state.currentPlayerIndex?' active-player':'');
+    d.innerHTML=`
+      <div class="side-dot" style="background:${p.color}"></div>
+      <span class="side-name">${escHTML(p.name)}</span>
+      <span class="side-pos">Case ${p.position}/${state.board.length-1}</span>
+      ${!p.jokerUsed?'<span class="joker-badge">🤡</span>':''}
+    `;
+    sp.appendChild(d);
+  });
+
+  // Joueur actuel
+  const cur=state.players[state.currentPlayerIndex];
+  $('current-player-name').style.color=cur?.color||'#fff';
+  $('current-player-name').textContent=cur?.name||'…';
+
+  // Dé affiché
+  if(state.diceValue) $('dice-container').textContent=DICE_FACES[state.diceValue-1];
+
+  // Boutons
+  const isMyTurn = cur?.id===myId;
+  const diceRolled = state.diceValue!==null;
+  $('btn-roll').className='btn btn-hot'+(isMyTurn&&!diceRolled?'':' btn-disabled');
+  $('btn-roll').disabled=!(isMyTurn&&!diceRolled);
+  $('btn-end-turn').style.display=(isMyTurn&&diceRolled)?'':'none';
+
+  // Joker
+  const me=state.players.find(p=>p.id===myId);
+  if(me){
+    $('btn-joker').disabled=me.jokerUsed;
+    $('btn-joker').className='btn btn-joker'+(me.jokerUsed?' btn-disabled':'');
+    $('joker-status').textContent=me.jokerUsed?'Joker utilisé ❌':'Joker disponible ✅';
+  }
+
+  // Canvas
+  resizeCanvas();
+  drawBoard(state);
+}
+
+// ============================================================
+//  MODAL DE CASE
+// ============================================================
+function showSquareModal(sq, playerName){
+  const actions=[
+    {label:'✅ Compris !', cls:'btn-hot',action:()=>{
+      waitingForTurnEnd=true;
+      $('btn-end-turn').style.display='';
+    }}
+  ];
+
+  switch(sq.type){
+    case 'hot':
+      openModal('🔥','Question HOT !',
+        `Les autres joueurs posent une question sur le sexe ou l'intimité à ${playerName}.\n📌 Rappel : questionnez uniquement ce qui concerne les joueurs présents !`,
+        'modal-hot',actions); break;
+    case 'cold':
+      openModal('❄️','Question froide',
+        `Les autres joueurs posent une question drôle ou anecdotique sur la vie quotidienne de ${playerName}.\n😄 Restez fun et bienveillants !`,
+        'modal-cold',actions); break;
+    case 'G':
+      openModal('🤡','Gage !',
+        `Les autres joueurs choisissent à la majorité : gage HOT 🔥 ou gage FROID ❄️ pour ${playerName} ?\nRappel : le gage doit concerner uniquement les joueurs présents.`,
+        'modal-gage',actions); break;
+    case 'GH':
+      openModal('🔥','Gage HOT !',
+        `Les autres joueurs inventent un défi hot pour ${playerName}. Soyez créatifs… mais restez entre vous 😏`,
+        'modal-hot',actions); break;
+    case 'GF':
+      openModal('❄️','Gage FROID !',
+        `Les autres joueurs inventent un gage drôle et amusant pour ${playerName}. Faites-le rire !`,
+        'modal-cold',actions); break;
+    case 'finish':
+      openModal('🏆','FINISH !',`${playerName} atteint la case FINISH ! Victoire ! 🎉`,'',actions); break;
+    default: break;
+  }
+}
+
+// ============================================================
+//  ÉVÉNEMENTS UI
+// ============================================================
+
+// ── Accueil ──
+$('btn-create').addEventListener('click',()=>{
+  const name=$('home-name').value.trim();
+  if(!name){toast('⚠️ Entre ton pseudo !');return;}
+  socket.emit('create_game',{name},(res)=>{
+    if(!res.ok){toast('❌ '+res.error);return;}
+    myGameCode=res.code;
+    showScreen('lobby');
+    $('lobby-code').textContent=res.code;
+  });
+});
+
+$('btn-join').addEventListener('click',joinGame);
+$('home-code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
+
+function joinGame(){
+  const name=$('home-name').value.trim();
+  const code=$('home-code').value.trim();
+  if(!name){toast('⚠️ Entre ton pseudo !');return;}
+  if(code.length!==6){toast('⚠️ Code invalide (6 chiffres)');return;}
+  socket.emit('join_game',{code,name},(res)=>{
+    if(!res.ok){toast('❌ '+res.error);return;}
+    myGameCode=res.code;
+    showScreen('lobby');
+    $('lobby-code').textContent=res.code;
+  });
+}
+
+// ── Lobby ──
+$('btn-ready').addEventListener('click',()=>socket.emit('player_ready'));
+$('btn-start').addEventListener('click',()=>{
+  socket.emit('start_game',(res)=>{
+    if(res&&!res.ok) toast('❌ '+res.error);
+  });
+});
+
+// ── Jeu : Lancer le dé ──
+$('btn-roll').addEventListener('click',()=>{
+  if($('btn-roll').disabled) return;
+  // Animation dé
+  const dc=$('dice-container');
+  dc.classList.add('rolling');
+  let i=0;const ani=setInterval(()=>{dc.textContent=DICE_FACES[Math.floor(Math.random()*6)];if(++i>8)clearInterval(ani);},60);
+
+  socket.emit('roll_dice',(res)=>{
+    dc.classList.remove('rolling');
+    if(!res||!res.ok){toast('❌ '+(res?.error||'Erreur'));return;}
+    dc.textContent=DICE_FACES[res.dice-1];
+    toast(`🎲 Tu lances un ${res.dice} !`);
+
+    // Délai pour l'animation de déplacement
+    setTimeout(()=>{
+      const cur=currentState?.players[currentState.currentPlayerIndex];
+      if(res.square) showSquareModal(res.square, cur?.name||'?');
+    },600);
+  });
+});
+
+// ── Fin de tour ──
+$('btn-end-turn').addEventListener('click',()=>{
+  socket.emit('end_turn');
+  $('btn-end-turn').style.display='none';
+  waitingForTurnEnd=false;
+});
+
+// ── Joker ──
+$('btn-joker').addEventListener('click',()=>{
+  if($('btn-joker').disabled) return;
+  socket.emit('use_joker',(res)=>{
+    if(!res.ok) toast('❌ '+(res.error||'Erreur'));
+    else toast('🤡 Joker déployé ! Les autres votent…');
+  });
+});
+
+// ── Finish ──
+$('btn-replay').addEventListener('click',()=>{
+  myGameCode=null;currentState=null;
+  showScreen('home');
+  $('home-name').value='';$('home-code').value='';
+});
+
+// ── Resize ──
+window.addEventListener('resize',()=>{
+  if(currentState) { resizeCanvas(); drawBoard(currentState); }
+});
+
+// ============================================================
+//  UTILS
+// ============================================================
+function escHTML(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+showScreen('home');
+</script>
+</body>
+</html>

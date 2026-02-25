@@ -18,8 +18,10 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 
-// Sert les fichiers statiques depuis /public
-app.use(express.static(path.join(__dirname, 'public')));
+// Sert l'index depuis la racine
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // ─────────────────────────────────────────────────────────────
 //  Modèle de données en mémoire
@@ -47,41 +49,41 @@ const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12'];
 //  type: 'hot' | 'cold' | 'G' | 'GH' | 'GF' | 'start' | 'finish'
 // ─────────────────────────────────────────────────────────────
 const BOARD = [
-  { id: 0,  type: 'start',  label: 'START' },
-  { id: 1,  type: 'cold',   label: '❄️' },
-  { id: 2,  type: 'cold',   label: '❄️' },
-  { id: 3,  type: 'GF',     label: 'GF' },
-  { id: 4,  type: 'cold',   label: '❄️' },
-  { id: 5,  type: 'cold',   label: '❄️' },
-  { id: 6,  type: 'G',      label: 'G' },
-  { id: 7,  type: 'cold',   label: '❄️' },
-  { id: 8,  type: 'cold',   label: '❄️' },
-  { id: 9,  type: 'GF',     label: 'GF' },
-  { id: 10, type: 'cold',   label: '❄️' },
-  { id: 11, type: 'cold',   label: '❄️' },
-  { id: 12, type: 'hot',    label: '🔥' },
-  { id: 13, type: 'G',      label: 'G' },
-  { id: 14, type: 'hot',    label: '🔥' },
-  { id: 15, type: 'hot',    label: '🔥' },
-  { id: 16, type: 'GH',     label: 'GH' },
-  { id: 17, type: 'hot',    label: '🔥' },
-  { id: 18, type: 'cold',   label: '❄️' },
-  { id: 19, type: 'cold',   label: '❄️' },
-  { id: 20, type: 'G',      label: 'G' },
-  { id: 21, type: 'cold',   label: '❄️' },
-  { id: 22, type: 'hot',    label: '🔥' },
-  { id: 23, type: 'GH',     label: 'GH' },
-  { id: 24, type: 'hot',    label: '🔥' },
-  { id: 25, type: 'hot',    label: '🔥' },
-  { id: 26, type: 'G',      label: 'G' },
-  { id: 27, type: 'hot',    label: '🔥' },
-  { id: 28, type: 'GH',     label: 'GH' },
-  { id: 29, type: 'hot',    label: '🔥' },
-  { id: 30, type: 'cold',   label: '❄️' },
-  { id: 31, type: 'GF',     label: 'GF' },
-  { id: 32, type: 'cold',   label: '❄️' },
-  { id: 33, type: 'hot',    label: '🔥' },
-  { id: 34, type: 'GH',     label: 'GH' },
+  { id: 0, type: 'start', label: 'START' },
+  { id: 1, type: 'cold', label: '❄️' },
+  { id: 2, type: 'cold', label: '❄️' },
+  { id: 3, type: 'GF', label: 'GF' },
+  { id: 4, type: 'cold', label: '❄️' },
+  { id: 5, type: 'cold', label: '❄️' },
+  { id: 6, type: 'G', label: 'G' },
+  { id: 7, type: 'cold', label: '❄️' },
+  { id: 8, type: 'cold', label: '❄️' },
+  { id: 9, type: 'GF', label: 'GF' },
+  { id: 10, type: 'cold', label: '❄️' },
+  { id: 11, type: 'cold', label: '❄️' },
+  { id: 12, type: 'hot', label: '🔥' },
+  { id: 13, type: 'G', label: 'G' },
+  { id: 14, type: 'hot', label: '🔥' },
+  { id: 15, type: 'hot', label: '🔥' },
+  { id: 16, type: 'GH', label: 'GH' },
+  { id: 17, type: 'hot', label: '🔥' },
+  { id: 18, type: 'cold', label: '❄️' },
+  { id: 19, type: 'cold', label: '❄️' },
+  { id: 20, type: 'G', label: 'G' },
+  { id: 21, type: 'cold', label: '❄️' },
+  { id: 22, type: 'hot', label: '🔥' },
+  { id: 23, type: 'GH', label: 'GH' },
+  { id: 24, type: 'hot', label: '🔥' },
+  { id: 25, type: 'hot', label: '🔥' },
+  { id: 26, type: 'G', label: 'G' },
+  { id: 27, type: 'hot', label: '🔥' },
+  { id: 28, type: 'GH', label: 'GH' },
+  { id: 29, type: 'hot', label: '🔥' },
+  { id: 30, type: 'cold', label: '❄️' },
+  { id: 31, type: 'GF', label: 'GF' },
+  { id: 32, type: 'cold', label: '❄️' },
+  { id: 33, type: 'hot', label: '🔥' },
+  { id: 34, type: 'GH', label: 'GH' },
   { id: 35, type: 'finish', label: 'FINISH 🏆' }
 ];
 
