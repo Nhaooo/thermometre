@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>🌡️ Test Plateaux — Choisissez votre style</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: #fff;
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+        }
+
+        p {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: .9rem;
+        }
+
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .label {
+            font-size: 1rem;
+            font-weight: bold;
+            background: #222;
+            border-radius: 8px;
+            padding: 6px 16px;
+        }
+
+        canvas {
+            border-radius: 12px;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🌡️ Choisissez votre plateau !</h1>
+    <p>Cliquez sur le numéro que vous préférez et dites-le moi → je l'intègre dans le jeu.</p>
+    <div class="grid" id="grid"></div>
+    <script>
+        // ── Board data ──────────────────────────────────────────────
+        const ROWS = 5, COLS = 7;
+        // Types per column (always): 0-1=cold, 2=GF, 3=G, 4=hot, 5=GH, 6=hot
+        // Row direction alternates L→R / R→L
+        function buildBoard() {
+            const colType = [
+                'start', 'cold', 'GF', 'G', 'hot', 'GH', 'hot', // row 0 L→R
+                'hot', 'GH', 'hot', 'G', 'GF', 'cold', 'cold',   // row 1 R→L
+                'cold', 'cold', 'GF', 'G', 'hot', 'GH', 'hot',   // row 2 L→R
+                'hot', 'GH', 'hot', 'G', 'GF', 'cold', 'cold',   // row 3 R→L
+                'cold', 'GF', 'cold', 'G', 'hot', 'GH', 'hot',   // row 4 L→R
+            ];
+            const labels = { start: 'START', cold: '❄️', hot: '🔥', G: 'G', GH: 'GH', GF: 'GF' };
+            const board = [];
+            for (let i = 0; i < 35; i++) board.push({ type: colType[i], label: labels[colType[i]] || colType[i] });
+            board.push({ type: 'finish', label: '🏆 FIN' });
+            return board;
+        }
+        const BOARD = buildBoard();
+
+        // ── Color helpers ───────────────────────────────────────────
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function lerpRgb(c1, c2, t) { return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)]; }
+        function rgb(c) { return `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`; }
+        function rgba(c, a) { return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`; }
+
+        const COLD = [20, 90, 220];
+        const HOT = [220, 50, 0];
+
+        // ── Snake path builder ──────────────────────────────────────
+        function snakePath(ctx, W, H) {
+            const padX = 22, padY = 28;
+            const gapH = 18; // gap between rows
+            const rowH = (H - padY * 2 - gapH * (ROWS - 1)) / ROWS;
+            const cellW = (W - padX * 2) / (COLS);
+            const turnR = (rowH + gapH) / 2;
+
+            function rowCy(r) { return padY + rowH / 2 + r * (rowH + gapH); }
+            const lX = padX + cellW / 2;
+            const rX = W - padX - cellW / 2;
+
+            ctx.beginPath();
+            ctx.moveTo(lX, rowCy(0));
+            for (let r = 0; r < ROWS; r++) {
+                const ltr = r % 2 === 0;
+                const y = rowCy(r);
+                if (ltr) {
+                    ctx.lineTo(rX, y);
+                    if (r < ROWS - 1) ctx.arc(rX, y + turnR, turnR, -Math.PI / 2, Math.PI / 2, false);
+                } else {
+                    ctx.lineTo(lX, y);
+                    if (r < ROWS - 1) ctx.arc(lX, y + turnR, turnR, -Math.PI / 2, Math.PI / 2, true);
+                }
+            }
+            return {
+                padX, padY, rowH, cellW, gapH, lX, rX,
+                rowCy,
+                cellCol: (r, pos) => (r % 2 === 0 ? pos : COLS - 1 - pos)
+            };
+        }
+
+        // ── Cell label helper ────────────────────────────────────────
+        function drawLabels(ctx, geo, W, H, textColor) {
+            const { padX, padY, rowH, cellW, gapH, rowCy, cellCol } = geo;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            BOARD.forEach((sq, i) => {
+                const r = Math.floor(i / COLS), pos = i % COLS;
+                if (r >= ROWS) return;
+                const col = cellCol(r, pos);
+                const cx = padX + col * cellW + cellW / 2;
+                const cy = rowCy(r);
+                if (sq.type === 'cold' || sq.type === 'hot') {
+                    ctx.font = `${Math.min(rowH * .45, 18)}px sans-serif`;
+                    ctx.fillStyle = textColor || '#fff';
+                    ctx.fillText(sq.label, cx, cy);
+                } else {
+                    ctx.font = `bold ${Math.min(rowH * .4, 14)}px sans-serif`;
+                    ctx.fillStyle = textColor || '#fff';
+                    ctx.fillText(sq.label, cx, cy);
+                }
+            });
+        }
+
+        // ── STYLE 1 : Classique Coloré ───────────────────────────────
+        function style1(canvas) {
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = '#f5f5f0'; ctx.fillRect(0, 0, W, H);
+
+            const geo = snakePath(ctx, W, H);
+            const { padX, padY, rowH, cellW, gapH, rowCy, cellCol } = geo;
+
+            // Draw each cell individually with color
+            BOARD.forEach((sq, i) => {
+                const r = Math.floor(i / COLS), pos = i % COLS;
+                if (r >= ROWS) return;
+                const col = cellCol(r, pos);
+                const t = col / (COLS - 1);
+                const cx = padX + col * cellW;
+                const cy = rowCy(r) - rowH / 2;
+
+                const bg = lerpRgb([200, 225, 255], [255, 200, 160], t);
+                ctx.fillStyle = rgb(bg);
+                ctx.strokeStyle = rgb(lerpRgb([50, 120, 200], [180, 60, 0], t));
+                ctx.lineWidth = 2;
+                const rc = 8;
+                ctx.beginPath();
+                ctx.roundRect(cx + 2, cy + 2, cellW - 4, rowH - 4, rc);
+                ctx.fill(); ctx.stroke();
+
+                // Hachures hot
+                if (sq.type === 'hot' || sq.type === 'GH') {
+                    ctx.save(); ctx.clip();
+                    ctx.strokeStyle = `rgba(180,60,0,.25)`; ctx.lineWidth = 1.5;
+                    for (let d = -rowH; d < cellW + rowH; d += 7) {
+                        ctx.beginPath(); ctx.moveTo(cx + 2 + d, cy + 2); ctx.lineTo(cx + 2 + d + rowH, cy + rowH - 2); ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            });
+
+            // Snake outline
+            const geo2 = snakePath(ctx, W, H);
+            ctx.lineWidth = rowH + gapH; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); // just for path
+            ctx.lineWidth = 1.5; ctx.strokeStyle = '#444';
+            ctx.stroke();
+
+            drawLabels(ctx, geo, W, H, '#222');
+
+            // Titre
+            ctx.fillStyle = '#333'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('① Classique Coloré', W / 2, 14);
+        }
+
+        // ── STYLE 2 : Néon Sombre ────────────────────────────────────
+        function style2(canvas) {
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            ctx.fillStyle = '#06080f'; ctx.fillRect(0, 0, W, H);
+
+            const geo = snakePath(ctx, W, H);
+            const { padX, padY, rowH, cellW, gapH, rowCy, cellCol } = geo;
+
+            BOARD.forEach((sq, i) => {
+                const r = Math.floor(i / COLS), pos = i % COLS;
+                if (r >= ROWS) return;
+                const col = cellCol(r, pos);
+                const t = col / (COLS - 1);
+                const cx = padX + col * cellW;
+                const cy = rowCy(r) - rowH / 2;
+                const border = rgb(lerpRgb([0, 200, 255], [255, 100, 0], t));
+
+                ctx.fillStyle = rgba(lerpRgb([0, 30, 60], [40, 10, 0], t), .9);
+                ctx.strokeStyle = border; ctx.lineWidth = 2;
+                ctx.shadowColor = border; ctx.shadowBlur = 8;
+                const rc = 6;
+                ctx.beginPath(); ctx.roundRect(cx + 2, cy + 2, cellW - 4, rowH - 4, rc);
+                ctx.fill(); ctx.stroke();
+                ctx.shadowBlur = 0;
+            });
+
+            drawLabels(ctx, geo, W, H, 'rgba(255,255,255,.85)');
+            ctx.fillStyle = '#0cf'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('② Néon Sombre', W / 2, 14);
+        }
+
+        // ── STYLE 3 : Gradient Continu ───────────────────────────────
+        function style3(canvas) {
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            ctx.fillStyle = '#0a0a14'; ctx.fillRect(0, 0, W, H);
+
+            const geo = snakePath(ctx, W, H);
+            const { padX, padY, rowH, cellW, gapH, rowCy, lX, rX } = geo;
+
+            // Draw the snake band with gradient
+            geo; // already built path above
+            const grd = ctx.createLinearGradient(padX, 0, W - padX, 0);
+            grd.addColorStop(0, '#0a2a80'); grd.addColorStop(.45, '#1a0f3a');
+            grd.addColorStop(1, '#801000');
+
+            ctx.lineWidth = rowH + 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.strokeStyle = grd; ctx.stroke();
+
+            // Outline
+            const geo2 = snakePath(ctx, W, H);
+            ctx.lineWidth = rowH + 4; ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.stroke();
+            const geo3 = snakePath(ctx, W, H);
+            ctx.lineWidth = rowH; ctx.strokeStyle = grd; ctx.stroke();
+
+            // Cell dividers
+            const geo4 = snakePath(ctx, W, H);
+            const { cellCol } = geo;
+            BOARD.forEach((sq, i) => {
+                const r = Math.floor(i / COLS), pos = i % COLS;
+                if (r >= ROWS) return;
+                const col = cellCol(r, pos);
+                const t = col / (COLS - 1);
+                const cx = padX + col * cellW + cellW;
+                const cy = rowCy(r);
+                if (pos < COLS - 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - rowH / 2 + 4); ctx.lineTo(cx, cy + rowH / 2 - 4);
+                    ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; ctx.stroke();
+                }
+            });
+
+            drawLabels(ctx, geo, W, H, 'rgba(255,255,255,.9)');
+            ctx.fillStyle = '#ff8800'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('③ Gradient Continu', W / 2, 14);
+        }
+
+        // ── STYLE 4 : Pastels Arrondis ───────────────────────────────
+        function style4(canvas) {
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, W, H);
+
+            const geo = snakePath(ctx, W, H);
+            const { padX, padY, rowH, cellW, gapH, rowCy, cellCol } = geo;
+
+            BOARD.forEach((sq, i) => {
+                const r = Math.floor(i / COLS), pos = i % COLS;
+                if (r >= ROWS) return;
+                const col = cellCol(r, pos);
+                const t = col / (COLS - 1);
+                const cx = padX + col * cellW;
+                const cy = rowCy(r) - rowH / 2;
+                const gap = 4;
+                const rc = Math.min(cellW, rowH) / 2 - 2;
+
+                const bg = lerpRgb([60, 100, 180], [180, 70, 30], t);
+                ctx.fillStyle = rgba(bg, .75);
+                ctx.strokeStyle = rgba(bg, 1); ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(cx + gap / 2, cy + gap / 2, cellW - gap, rowH - gap, rc);
+                ctx.fill(); ctx.stroke();
+            });
+
+            drawLabels(ctx, geo, W, H, '#fff');
+            ctx.fillStyle = '#a8d8ea'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('④ Pastels Arrondis', W / 2, 14);
+        }
+
+        // ── STYLE 5 : Sketch (comme la photo) ────────────────────────
+        function style5(canvas) {
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            ctx.fillStyle = '#faf8f2'; ctx.fillRect(0, 0, W, H);
+
+            const geo = snakePath(ctx, W, H);
+            const { padX, padY, rowH, cellW, gapH, rowCy, cellCol, lX, rX } = geo;
+
+            // Draw snake outline first (thick background)
+            const geo2 = snakePath(ctx, W, H);
+            ctx.lineWidth = rowH + gapH; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.strokeStyle = 'rgba(220,220,210,1)'; ctx.stroke();
+
+            // Outer border
+            const geo3 = snakePath(ctx, W, H);
+            ctx.lineWidth = rowH + gapH + 3; ctx.strokeStyle = '#333'; ctx.stroke();
+
+            // Inner fill
+            const geo4 = snakePath(ctx, W, H);
+            ctx.lineWidth = rowH + gapH; ctx.strokeStyle = '#f0ede0'; ctx.stroke();
+
+            // Cell dividers + color tints
+            BOARD.forEach((sq, i) => {
+                const r = Math.floor(i / COLS), pos = i % COLS;
+                if (r >= ROWS) return;
+                const col = cellCol(r, pos);
+                const t = col / (COLS - 1);
+                const cx = padX + col * cellW;
+                const cy = rowCy(r) - rowH / 2;
+
+                // Light cold/hot tint
+                if (sq.type === 'hot' || sq.type === 'GH') {
+                    ctx.fillStyle = 'rgba(255,140,80,.25)';
+                    ctx.beginPath(); ctx.roundRect(cx + 2, cy + 2, cellW - 4, rowH - 4, 4); ctx.fill();
+                    // hatching
+                    ctx.save(); ctx.clip();
+                    ctx.strokeStyle = 'rgba(180,80,0,.2)'; ctx.lineWidth = 1.5;
+                    for (let d = -rowH; d < cellW + rowH; d += 7) {
+                        ctx.beginPath(); ctx.moveTo(cx + d, cy); ctx.lineTo(cx + d + rowH, cy + rowH); ctx.stroke();
+                    }
+                    ctx.restore();
+                } else if (sq.type === 'cold' || sq.type === 'GF') {
+                    ctx.fillStyle = 'rgba(100,160,255,.18)';
+                    ctx.beginPath(); ctx.roundRect(cx + 2, cy + 2, cellW - 4, rowH - 4, 4); ctx.fill();
+                }
+                // Divider lines
+                if (pos < COLS - 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + cellW, cy + 3); ctx.lineTo(cx + cellW, cy + rowH - 3);
+                    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1.2; ctx.stroke();
+                }
+            });
+
+            drawLabels(ctx, geo, W, H, '#222');
+
+            // Label cold/hot zones
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillStyle = 'rgba(0,80,200,.6)'; ctx.textAlign = 'left';
+            ctx.fillText('❄️ FROID', padX, H - 6);
+            ctx.fillStyle = 'rgba(180,50,0,.6)'; ctx.textAlign = 'right';
+            ctx.fillText('CHAUD 🔥', W - padX, H - 6);
+
+            ctx.fillStyle = '#333'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('⑤ Style Dessiné', W / 2, 14);
+        }
+
+        // ── Render all ──────────────────────────────────────────────
+        const styles = [
+            { fn: style1, name: '① Classique Coloré' },
+            { fn: style2, name: '② Néon Sombre' },
+            { fn: style3, name: '③ Gradient Continu' },
+            { fn: style4, name: '④ Pastels Arrondis' },
+            { fn: style5, name: '⑤ Style Dessiné' },
+        ];
+
+        const W = 300, H = 420;
+        const grid = document.getElementById('grid');
+        styles.forEach(({ fn, name }) => {
+            const panel = document.createElement('div');
+            panel.className = 'panel';
+            const lbl = document.createElement('div');
+            lbl.className = 'label'; lbl.textContent = name;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            panel.appendChild(lbl); panel.appendChild(cv);
+            grid.appendChild(panel);
+            fn(cv);
+        });
+    </script>
+</body>
+
+</html>
