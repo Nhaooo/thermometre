@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plateau exporté</title>
+<style>
+  :root{
+    --cellW:45px;
+    --cellH:45px;
+    --radius:10px;
+    --thermo: linear-gradient(90deg,
+      rgb(25,95,255) 0%,
+      rgb(85,55,230) 34%,
+      rgb(130,45,255) 55%,
+      rgb(220,60,120) 78%,
+      rgb(255,75,55) 100%
+    );
+  }
+  body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#fff; }
+  .stage{
+    position:relative;
+    width:min(980px, 96vw);
+    aspect-ratio: 1000 / 700;
+    margin:18px auto;
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    overflow:hidden;
+  }
+  .stage::before{
+    content:"";
+    position:absolute; inset:0;
+    background:var(--thermo);
+    opacity:.20;
+    pointer-events:none;
+  }
+  svg{ position:absolute; inset:0; width:100%; height:100%; }
+  path{ stroke:rgba(17,24,39,.85); stroke-width:6; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .cell{
+    position:absolute;
+    width:var(--cellW);
+    height:var(--cellH);
+    border-radius:var(--radius);
+    border:2px solid rgba(17,24,39,.65);
+    background: rgba(255,255,255,.70);
+    display:grid;
+    place-items:center;
+    font-weight:850;
+    user-select:none;
+  }
+  .cell::after{
+    content:"";
+    position:absolute;
+    right:-2px; top:9px; bottom:9px;
+    width:2px;
+    background: rgba(17,24,39,.25);
+    border-radius:2px;
+    opacity:.6;
+  }
+  .txt{ font-size:14px; letter-spacing:.5px; }
+  .barred .x1, .barred .x2{
+    position:absolute;
+    inset:10px;
+    border-top:3px solid rgba(17,24,39,.75);
+    transform-origin:center;
+    border-radius:3px;
+  }
+  .barred .x1{ transform:rotate(35deg); }
+  .barred .x2{ transform:rotate(-35deg); }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <svg viewBox="0 0 1000 700" preserveAspectRatio="none" aria-label="Plateau">
+      <path d="M 707.96 151.74 L 707.96 215.08 L 741.19 232.26 L 736.66 340.70 L 710.98 373.98 L 721.55 472.75 L 649.80 366.46 L 618.83 354.65 L 584.84 294.53 L 602.97 251.58 L 617.32 159.25 L 550.86 129.19 L 517.62 159.25 L 511.58 202.20 L 471.55 142.08 L 436.81 125.97 L 410.37 186.09 L 440.58 230.11 L 501.76 294.53 L 492.70 376.12 L 446.63 416.92 L 411.88 475.97 L 372.61 423.36 L 325.78 389.01 L 374.12 331.03 L 348.44 250.51 L 311.43 204.35 L 244.96 163.55 L 173.21 172.14 L 146.02 231.19 L 204.93 269.84 L 153.58 328.89 L 220.80 383.64 L 146.02 431.95"></path>
+    </svg>
+    <div class="cell " style="left:calc(70.7956% - (var(--cellW)/2)); top:calc(27.9218% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(72.5545% - (var(--cellW)/2)); top:calc(32.0248% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(74.0277% - (var(--cellW)/2)); top:calc(36.2943% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(73.8631% - (var(--cellW)/2)); top:calc(41.9222% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(73.6984% - (var(--cellW)/2)); top:calc(47.5500% - (var(--cellH)/2));">
+        <div class="txt">GF</div>
+        
+      </div>
+    <div class="cell barred" style="left:calc(71.7367% - (var(--cellW)/2)); top:calc(52.2422% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        <div class="x1"></div><div class="x2"></div>
+      </div>
+    <div class="cell " style="left:calc(71.4060% - (var(--cellW)/2)); top:calc(57.5402% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(71.8257% - (var(--cellW)/2)); top:calc(63.1410% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(71.6801% - (var(--cellW)/2)); top:calc(66.5306% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(69.4739% - (var(--cellW)/2)); top:calc(61.8620% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(67.2678% - (var(--cellW)/2)); top:calc(57.1935% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(65.0617% - (var(--cellW)/2)); top:calc(52.5249% - (var(--cellH)/2));">
+        <div class="txt">G</div>
+        
+      </div>
+    <div class="cell " style="left:calc(61.6458% - (var(--cellW)/2)); top:calc(50.0647% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell barred" style="left:calc(59.7054% - (var(--cellW)/2)); top:calc(45.1612% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        <div class="x1"></div><div class="x2"></div>
+      </div>
+    <div class="cell " style="left:calc(59.0528% - (var(--cellW)/2)); top:calc(40.1518% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(60.4112% - (var(--cellW)/2)); top:calc(34.8914% - (var(--cellH)/2));">
+        <div class="txt">G</div>
+        
+      </div>
+    <div class="cell " style="left:calc(61.0168% - (var(--cellW)/2)); top:calc(29.3255% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(61.6223% - (var(--cellW)/2)); top:calc(23.7595% - (var(--cellH)/2));">
+        <div class="txt">GH</div>
+        
+      </div>
+    <div class="cell " style="left:calc(58.7909% - (var(--cellW)/2)); top:calc(20.8501% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(55.1983% - (var(--cellW)/2)); top:calc(18.5289% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(52.2532% - (var(--cellW)/2)); top:calc(22.1161% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(51.3052% - (var(--cellW)/2)); top:calc(27.3919% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(49.5581% - (var(--cellW)/2)); top:calc(25.4524% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(47.3729% - (var(--cellW)/2)); top:calc(20.7638% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(43.9343% - (var(--cellW)/2)); top:calc(18.1638% - (var(--cellH)/2));">
+        <div class="txt">GH</div>
+        
+      </div>
+    <div class="cell " style="left:calc(42.2062% - (var(--cellW)/2)); top:calc(22.7868% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(41.6250% - (var(--cellW)/2)); top:calc(27.8082% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(43.8562% - (var(--cellW)/2)); top:calc(32.4524% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(46.5276% - (var(--cellW)/2)); top:calc(36.5874% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(49.2429% - (var(--cellW)/2)); top:calc(40.6717% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(49.8906% - (var(--cellW)/2)); top:calc(45.7496% - (var(--cellH)/2));">
+        <div class="txt">GF</div>
+        
+      </div>
+    <div class="cell " style="left:calc(49.4553% - (var(--cellW)/2)); top:calc(51.3479% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell barred" style="left:calc(47.5751% - (var(--cellW)/2)); top:calc(55.8760% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        <div class="x1"></div><div class="x2"></div>
+      </div>
+    <div class="cell " style="left:calc(44.6359% - (var(--cellW)/2)); top:calc(59.6252% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(42.6364% - (var(--cellW)/2)); top:calc(64.4799% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell barred" style="left:calc(40.5378% - (var(--cellW)/2)); top:calc(66.7512% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        <div class="x1"></div><div class="x2"></div>
+      </div>
+    <div class="cell " style="left:calc(38.1790% - (var(--cellW)/2)); top:calc(62.2376% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(35.3192% - (var(--cellW)/2)); top:calc(58.4456% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(32.9258% - (var(--cellW)/2)); top:calc(54.9767% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell barred" style="left:calc(35.4508% - (var(--cellW)/2)); top:calc(50.6504% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        <div class="x1"></div><div class="x2"></div>
+      </div>
+    <div class="cell " style="left:calc(37.1443% - (var(--cellW)/2)); top:calc(46.0919% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(35.9463% - (var(--cellW)/2)); top:calc(40.7254% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(34.6471% - (var(--cellW)/2)); top:calc(35.4365% - (var(--cellH)/2));">
+        <div class="txt">G</div>
+        
+      </div>
+    <div class="cell " style="left:calc(32.1808% - (var(--cellW)/2)); top:calc(31.0417% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(29.1967% - (var(--cellW)/2)); top:calc(27.4856% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(25.8363% - (var(--cellW)/2)); top:calc(24.5389% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(22.1425% - (var(--cellW)/2)); top:calc(23.7665% - (var(--cellH)/2));">
+        <div class="txt">GH</div>
+        
+      </div>
+    <div class="cell " style="left:calc(18.2275% - (var(--cellW)/2)); top:calc(24.4360% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(16.0539% - (var(--cellW)/2)); top:calc(28.5230% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(14.9971% - (var(--cellW)/2)); top:calc(33.3966% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(18.2938% - (var(--cellW)/2)); top:calc(36.4865% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(19.6323% - (var(--cellW)/2)); top:calc(39.9624% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell barred" style="left:calc(17.0447% - (var(--cellW)/2)); top:calc(44.2125% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        <div class="x1"></div><div class="x2"></div>
+      </div>
+    <div class="cell " style="left:calc(16.4213% - (var(--cellW)/2)); top:calc(48.2215% - (var(--cellH)/2));">
+        <div class="txt">GF</div>
+        
+      </div>
+    <div class="cell " style="left:calc(19.4784% - (var(--cellW)/2)); top:calc(51.7788% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(21.5857% - (var(--cellW)/2)); top:calc(55.2616% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+    <div class="cell " style="left:calc(18.2739% - (var(--cellW)/2)); top:calc(58.3184% - (var(--cellH)/2));">
+        <div class="txt"></div>
+        
+      </div>
+  </div>
+</body>
+</html>

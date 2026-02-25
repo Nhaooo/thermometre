@@ -245,17 +245,17 @@
       overflow: hidden;
     }
 
-    /* ── BOARD (user's exact style, gradient renforcé) ── */
+    /* ── BOARD – responsive ── */
     .stage {
       position: relative;
-      width: min(96vw, calc((100dvh - 110px) * 10/7), 920px);
-      aspect-ratio: 1000/700;
       border-radius: 14px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, .12);
       box-shadow: 0 0 50px rgba(0, 0, 0, .6);
       background: #06060f;
-      /* fond sombre — le gradient passe UNIQUEMENT par les cases */
+      /* Landscape default */
+      width: min(96vw, calc((100dvh - 110px) * 10/7), 920px);
+      aspect-ratio: 10/7;
     }
 
     .stage svg {
@@ -293,18 +293,20 @@
     .cell.barred .x1,
     .cell.barred .x2 {
       position: absolute;
-      inset: 8px;
-      border-top: 2.5px solid rgba(255, 255, 255, .8);
-      transform-origin: center;
+      top: 50%;
+      left: 50%;
+      width: 65%;
+      height: 2.5px;
+      background: rgba(255, 255, 255, 0.9);
       border-radius: 2px;
     }
 
     .cell.barred .x1 {
-      transform: rotate(35deg);
+      transform: translate(-50%, -50%) rotate(45deg);
     }
 
     .cell.barred .x2 {
-      transform: rotate(-35deg);
+      transform: translate(-50%, -50%) rotate(-45deg);
     }
 
     .cell.is-start {
@@ -474,11 +476,18 @@
       }
 
       #game-board-col {
-        padding: .2rem;
+        padding: 0;
+        align-items: stretch;
+        justify-content: stretch;
       }
 
       .stage {
-        width: min(100%, 540px);
+        width: 100% !important;
+        height: 100% !important;
+        aspect-ratio: unset !important;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
       }
     }
 
@@ -654,8 +663,11 @@
         rapides</p>
       <ul style="list-style:none;display:flex;flex-direction:column;gap:.28rem;font-size:.78rem;color:var(--muted);">
         <li>🎲 Lance le dé, avance sur le plateau</li>
-        <li>Case barrée ✕ = question HOT 🔥 · Case vide = question froide ❄️</li>
-        <li><b style="color:var(--text)">G</b> = Gage · <b>GH</b> = Gage Hot · <b>GF</b> = Gage Froid</li>
+        <li>Case ROUGE = Question HOT 🔥 · Case BLEUE = Question Froid ❄️</li>
+        <li>Case BARRÉE ✕ = <b style="color:var(--hot)">Action Extrême !</b></li>
+        <li>Case <b style="color:var(--text)">G</b> = <b style="color:var(--text)">Gage !</b> · <b
+            style="color:var(--hot)">GH</b> = <b style="color:var(--hot)">Gage Hot 🔥</b> · <b
+            style="color:var(--text)">GF</b> = <b style="color:#00ccdd">Gage Froid ❄️</b></li>
         <li>🤡 1 <b style="color:var(--joker)">Joker</b> chacun · 🏆 Premier à FINISH gagne !</li>
       </ul>
     </div>
@@ -780,50 +792,81 @@
     $('modal-overlay').addEventListener('click', e => { if (e.target === $('modal-overlay')) closeModal(); });
 
     // ── BOARD ──
-    const VBW = 1000, VBH = 700, SOFF = 8;
-    let boardReady = false;
+    const SOFF = 8;
+    // Chemins parfaitement arrondis (Bézier) pour un vrai effet "Serpent" très smooth 🐍
+    // Les boucles sont plus grandes et s'étirent plus à gauche pour garder 60% de cases HOT.
+    const L_PATH = 'M 80 80 C 80 160, 920 60, 920 220 C 920 380, 80 200, 80 400 C 80 600, 920 380, 920 540 C 920 660, 80 520, 80 660';
+    const P_PATH = 'M 100 40 C 100 120, 600 60, 600 180 C 600 340, 100 240, 100 420 C 100 520, 600 440, 600 540 C 600 680, 100 580, 100 760 C 100 860, 600 780, 600 880 C 600 980, 100 920, 100 960';
+    let boardReady = false, boardKey = null, currentBoard = null;
+    const squareHotness = [];
+
+    function getCfg() {
+      const p = window.innerWidth <= 600;
+      return p ? { vbw: 700, vbh: 1000, d: P_PATH, key: 'p' }
+        : { vbw: 1000, vbh: 700, d: L_PATH, key: 'l' };
+    }
 
     function initBoard(board) {
-      if (boardReady) return; boardReady = true;
+      currentBoard = board;
+      const cfg = getCfg();
+      if (boardReady && boardKey === cfg.key) return;
+      boardReady = true; boardKey = cfg.key;
+      document.querySelectorAll('.cell').forEach(c => c.remove());
       const stage = $('board-stage');
-      const path = $('snake-path');
-      const L = path.getTotalLength();
-      const N = board.length;
+      stage.querySelector('svg').setAttribute('viewBox', '0 0 ' + cfg.vbw + ' ' + cfg.vbh);
+      const pathEl = $('snake-path');
+      pathEl.setAttribute('d', cfg.d);
+      const cellSz = Math.round(Math.max(28, Math.min(54, Math.min(stage.offsetWidth || 300, stage.offsetHeight || 300) / 8)));
+      stage.style.setProperty('--cellW', cellSz + 'px');
+      stage.style.setProperty('--cellH', cellSz + 'px');
+      const L = pathEl.getTotalLength(), N = board.length;
       board.forEach((sq, i) => {
         const t = (i + 0.5) / N;
-        const p = path.getPointAtLength(SOFF + t * (L - 2 * SOFF));
-        const lp = (p.x / VBW * 100).toFixed(3), tp = (p.y / VBH * 100).toFixed(3);
-        // Couleur selon Y : haut=chaud(rouge), bas=froid(bleu)
-        const yRatio = tp / 100; // 0=haut/red, 1=bas/blue
-        const cr = Math.round(200 - yRatio * 200), cg = Math.round(0), cb = Math.round(yRatio * 210);
-        const hot = sq.type === 'hot' || sq.type === 'GH';
+        const p = pathEl.getPointAtLength(SOFF + t * (L - 2 * SOFF));
+        const lp = (p.x / cfg.vbw * 100).toFixed(3), tp = (p.y / cfg.vbh * 100).toFixed(3);
+        const xr = parseFloat(lp) / 100;
+        // Pousse le rouge un petit peu plus loin (le centre 0.5 devient plus rouge)
+        const adjustedXr = Math.max(0, Math.min(1, xr * 1.1 - 0.05));
+        const cr = Math.round(220 - adjustedXr * 220), cb = Math.round(adjustedXr * 240);
+
+        // Dynamically compute hotness strictly based on color (red dominates blue)
+        const isHot = cr >= cb;
+        squareHotness[i] = isHot;
+
+        const isBarred = sq.barred === true;
+
         const div = document.createElement('div');
-        div.className = 'cell' + (hot ? ' barred' : '') + (sq.type === 'start' ? ' is-start' : sq.type === 'finish' ? ' is-finish' : '');
+        div.className = 'cell' + (isBarred ? ' barred' : '') + (sq.type === 'start' ? ' is-start' : sq.type === 'finish' ? ' is-finish' : '');
         div.id = 'cell-' + i;
-        div.style.background = `rgba(${cr},${cg},${cb},0.72)`;
+        div.style.background = 'rgba(' + cr + ',0,' + cb + ',0.72)';
         div.style.left = 'calc(' + lp + '% - (var(--cellW)/2))';
         div.style.top = 'calc(' + tp + '% - (var(--cellH)/2))';
+
+        // Effet random : légère rotation organique
+        const rot = (Math.random() - 0.5) * 16;
+        div.style.transform = 'rotate(' + rot + 'deg)';
+
         let lbl = '';
         if (sq.type === 'start') lbl = '▶';
         else if (sq.type === 'finish') lbl = '🏆';
         else if (['G', 'GH', 'GF'].includes(sq.type)) lbl = sq.type;
-        div.innerHTML = '<div class="txt">' + lbl + '</div>' + (hot ? '<div class="x1"></div><div class="x2"></div>' : '');
+        div.innerHTML = '<div class="txt">' + lbl + '</div>' + (isBarred ? '<div class="x1"></div><div class="x2"></div>' : '');
         stage.appendChild(div);
       });
     }
 
     function updateTokens(players, board) {
       document.querySelectorAll('.player-token').forEach(t => t.remove());
-      const path = $('snake-path');
-      const L = path.getTotalLength();
-      const N = board.length;
+      const cfg = getCfg();
+      const pathEl = $('snake-path');
+      const L = pathEl.getTotalLength(), N = board.length;
       const byPos = {};
       players.forEach(p => { (byPos[p.position] = byPos[p.position] || []).push(p); });
       Object.entries(byPos).forEach(([pos, grp]) => {
         const i = parseInt(pos);
         const t = (i + 0.5) / N;
-        const pt = path.getPointAtLength(SOFF + t * (L - 2 * SOFF));
-        const lp = pt.x / VBW * 100, tp = pt.y / VBH * 100;
+        const pt = pathEl.getPointAtLength(SOFF + t * (L - 2 * SOFF));
+        const lp = pt.x / cfg.vbw * 100, tp = pt.y / cfg.vbh * 100;
         const n = grp.length;
         grp.forEach((pl, gi) => {
           const off = n > 1 ? (gi - (n - 1) / 2) * 14 : 0;
@@ -835,6 +878,19 @@
         });
       });
     }
+
+    // Re-render on orientation change
+    let _rsz;
+    window.addEventListener('resize', () => {
+      clearTimeout(_rsz);
+      _rsz = setTimeout(() => {
+        if (currentBoard && currentState?.phase === 'playing') {
+          boardReady = false;
+          initBoard(currentBoard);
+          if (currentState?.players) updateTokens(currentState.players, currentBoard);
+        }
+      }, 200);
+    });
 
     // ── SOCKET ──
     const socket = io();
@@ -896,17 +952,22 @@
       endBtn.style.display = (isMyTurn && rolled) ? '' : 'none';
     }
 
-    // ── MODAL DE CASE ──
-    function showCaseModal(sq, playerName) {
-      const next = { label: '✅ Compris !', cls: 'btn-hot', fn: () => { $('btn-end-turn').style.display = ''; $('btn-end-turn-mob').style.display = ''; } };
-      switch (sq.type) {
-        case 'hot': return openModal('🔥', 'Question HOT !', 'Les autres posent une question HOT à ' + playerName + ' 😏\n(sexe, intimité, anecdotes)\n📌 Entre joueurs présents !', 'modal-hot', [next]);
-        case 'cold': return openModal('❄️', 'Question froide', 'Les autres posent une question fun à ' + playerName + ' 😄\n(vie quotidienne, drôle)\nRestez bienveillants !', 'modal-cold', [next]);
-        case 'G': return openModal('🤡', 'Gage !', 'Vote à la majorité : gage HOT 🔥 ou FROID ❄️ pour ' + playerName + ' ?', 'modal-gage', [next]);
-        case 'GH': return openModal('🔥', 'Gage HOT !', 'Les autres inventent un défi HOT pour ' + playerName + ' 😏', 'modal-hot', [next]);
-        case 'GF': return openModal('❄️', 'Gage FROID !', 'Les autres inventent un gage drôle pour ' + playerName + ' 😂', 'modal-cold', [next]);
-        case 'finish': return openModal('🏆', 'FINISH !', playerName + ' gagne ! 🎉', 'modal-gage', [next]);
-      }
+    // ── TOAST DE CASE (pas de popup, on décide entre nous) ──
+    function showCaseToast(sq, playerName, isHot) {
+      if (sq.type === 'start') return;
+      let msg = '';
+      if (sq.type === 'finish') msg = '🏆 FINISH !';
+      else if (sq.barred) msg = '❌ BARRÉE ! Action Extrême !';
+      else if (sq.type === 'G') msg = '🤡 Gage !';
+      else if (sq.type === 'GH') msg = '🔥 Gage HOT !';
+      else if (sq.type === 'GF') msg = '❄️ Gage Froid !';
+      else if (isHot) msg = '🔥 Case HOT !';
+      else msg = '❄️ Case froide !';
+
+      toast(playerName + ' — ' + msg, 3500);
+      // Afficher le bouton fin de tour
+      $('btn-end-turn').style.display = '';
+      $('btn-end-turn-mob').style.display = '';
     }
 
     // ── DÉ ──
@@ -918,7 +979,11 @@
         if (!res?.ok) { toast('❌ ' + (res?.error || 'Erreur')); return; }
         const f = FACES[res.dice - 1]; $('dice-el').textContent = f; $('dice-mob').textContent = f;
         toast('🎲 ' + res.dice + ' !');
-        if (res.square) setTimeout(() => { const cur = currentState?.players[currentState?.currentPlayerIndex]; showCaseModal(res.square, cur?.name || '?'); }, 500);
+        if (res.square) setTimeout(() => {
+          const cur = currentState?.players[currentState?.currentPlayerIndex];
+          const isHot = squareHotness[res.square.id];
+          showCaseToast(res.square, cur?.name || '?', isHot);
+        }, 500);
       });
     }
     function doEnd() { socket.emit('end_turn'); $('btn-end-turn').style.display = 'none'; $('btn-end-turn-mob').style.display = 'none'; }

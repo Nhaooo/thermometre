@@ -57,48 +57,48 @@ const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12'];
 // Row 4 L→R  idx 28-34: col 0,1,2,3,4,5,6
 // Row 5 R→L  idx 35   : col 6 = FINISH bas-droite
 const BOARD = [
-  // Row 0, gauche→droite
-  { id: 0, type: 'start', label: 'START' }, // col 0
-  { id: 1, type: 'cold', label: '❄️' },    // col 1
-  { id: 2, type: 'cold', label: '❄️' },    // col 2
-  { id: 3, type: 'G', label: 'G' },    // col 3
-  { id: 4, type: 'hot', label: '🔥' },    // col 4
-  { id: 5, type: 'GH', label: 'GH' },    // col 5
-  { id: 6, type: 'hot', label: '🔥' },    // col 6
-  // Row 1, droite→gauche
-  { id: 7, type: 'hot', label: '🔥' },    // col 6
-  { id: 8, type: 'GH', label: 'GH' },    // col 5
-  { id: 9, type: 'hot', label: '🔥' },    // col 4
-  { id: 10, type: 'G', label: 'G' },    // col 3
-  { id: 11, type: 'cold', label: '❄️' },    // col 2
-  { id: 12, type: 'GF', label: 'GF' },    // col 1
-  { id: 13, type: 'cold', label: '❄️' },    // col 0
-  // Row 2, gauche→droite
-  { id: 14, type: 'cold', label: '❄️' },    // col 0
-  { id: 15, type: 'cold', label: '❄️' },    // col 1
-  { id: 16, type: 'GF', label: 'GF' },    // col 2
-  { id: 17, type: 'G', label: 'G' },    // col 3
-  { id: 18, type: 'hot', label: '🔥' },    // col 4
-  { id: 19, type: 'GH', label: 'GH' },    // col 5
-  { id: 20, type: 'hot', label: '🔥' },    // col 6
-  // Row 3, droite→gauche
-  { id: 21, type: 'hot', label: '🔥' },    // col 6
-  { id: 22, type: 'GH', label: 'GH' },    // col 5
-  { id: 23, type: 'hot', label: '🔥' },    // col 4
-  { id: 24, type: 'G', label: 'G' },    // col 3
-  { id: 25, type: 'cold', label: '❄️' },    // col 2
-  { id: 26, type: 'GF', label: 'GF' },    // col 1
-  { id: 27, type: 'cold', label: '❄️' },    // col 0
-  // Row 4, gauche→droite
-  { id: 28, type: 'cold', label: '❄️' },    // col 0
-  { id: 29, type: 'GF', label: 'GF' },    // col 1
-  { id: 30, type: 'cold', label: '❄️' },    // col 2
-  { id: 31, type: 'G', label: 'G' },    // col 3
-  { id: 32, type: 'hot', label: '🔥' },    // col 4
-  { id: 33, type: 'GH', label: 'GH' },    // col 5
-  { id: 34, type: 'hot', label: '🔥' },    // col 6
-  // Row 5 (seul idx 35 utilisé, col 6)
-  { id: 35, type: 'finish', label: '🏆 FIN' },// col 6
+  // Row 0
+  { id: 0, type: 'start', label: 'START' },
+  { id: 1, type: 'cold', label: '❄️' },
+  { id: 2, type: 'cold', label: '❄️' },
+  { id: 3, type: 'cold', label: '❄️' },
+  { id: 4, type: 'hot', label: '🔥' },
+  { id: 5, type: 'hot', label: '🔥', barred: true },
+  { id: 6, type: 'hot', label: '🔥' },
+  // Row 1
+  { id: 7, type: 'hot', label: '🔥' },
+  { id: 8, type: 'hot', label: '🔥', barred: true },
+  { id: 9, type: 'GF', label: 'GF' },
+  { id: 10, type: 'G', label: 'G' },
+  { id: 11, type: 'cold', label: '❄️' },
+  { id: 12, type: 'cold', label: '❄️' },
+  { id: 13, type: 'cold', label: '❄️' },
+  // Row 2
+  { id: 14, type: 'GH', label: 'GH' },
+  { id: 15, type: 'cold', label: '❄️' },
+  { id: 16, type: 'cold', label: '❄️' },
+  { id: 17, type: 'G', label: 'G' },
+  { id: 18, type: 'hot', label: '🔥' },
+  { id: 19, type: 'hot', label: '🔥', barred: true },
+  { id: 20, type: 'hot', label: '🔥' },
+  // Row 3
+  { id: 21, type: 'hot', label: '🔥' },
+  { id: 22, type: 'hot', label: '🔥', barred: true },
+  { id: 23, type: 'GF', label: 'GF' },
+  { id: 24, type: 'G', label: 'G' },
+  { id: 25, type: 'cold', label: '❄️' },
+  { id: 26, type: 'cold', label: '❄️' },
+  { id: 27, type: 'cold', label: '❄️' },
+  // Row 4
+  { id: 28, type: 'GH', label: 'GH' },
+  { id: 29, type: 'cold', label: '❄️' },
+  { id: 30, type: 'cold', label: '❄️' },
+  { id: 31, type: 'hot', label: '🔥' },
+  { id: 32, type: 'hot', label: '🔥', barred: true },
+  { id: 33, type: 'hot', label: '🔥', barred: true },
+  { id: 34, type: 'hot', label: '🔥' },
+  // Row 5
+  { id: 35, type: 'finish', label: '🏆 FIN' },
 ];
 
 const TOTAL_SQUARES = BOARD.length - 1; // index max = 35
