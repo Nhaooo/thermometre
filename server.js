@@ -9,6 +9,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const QRCode = require('qrcode');
 
 const app = express();
 const server = http.createServer(app);
@@ -176,8 +177,17 @@ io.on('connection', (socket) => {
     socket.join(code);
     socket.data.gameCode = code;
     console.log(`[CREATE] Partie ${code} par ${name}`);
-    callback({ ok: true, code, playerId: socket.id });
-    broadcastGame(games[code]);
+    const protocol = socket.handshake.headers['x-forwarded-proto'] || 'http';
+    const host = socket.handshake.headers.host || `localhost:${PORT}`;
+    const joinUrl = `${protocol}://${host}?code=${code}`;
+
+    QRCode.toDataURL(joinUrl, {
+      color: { dark: '#ffffff', light: '#00000000' },
+      margin: 2
+    }, (err, url) => {
+      callback({ ok: true, code, playerId: socket.id, qrUrl: url, joinUrl });
+      broadcastGame(games[code]);
+    });
   });
 
   // ── Rejoindre une partie ──────────────────────────────────
@@ -240,7 +250,29 @@ io.on('connection', (socket) => {
     if (currentPlayer.id !== socket.id) return callback?.({ ok: false, error: "Ce n'est pas ton tour." });
     if (game.diceValue !== null) return callback?.({ ok: false, error: 'Dé déjà lancé.' });
 
-    const dice = Math.floor(Math.random() * 6) + 1;
+    // --- KARMA DU JEU (Le dé légèrement truqué) ---
+    let dice = Math.floor(Math.random() * 6) + 1;
+    const pos = currentPlayer.position;
+
+    // Analyser les 6 cases potentielles devant le joueur
+    const trapRolls = [];
+    for (let r = 1; r <= 6; r++) {
+      const targetPos = pos + r;
+      if (targetPos <= TOTAL_SQUARES) {
+        const sq = BOARD[targetPos];
+        // On considère comme "piège" les Gages ou les actions extrêmes (cases barrées)
+        if (sq.type === 'G' || sq.type === 'GH' || sq.type === 'GF' || sq.barred === true) {
+          trapRolls.push(r);
+        }
+      }
+    }
+
+    // S'il y a des pièges à moins de 6 cases, on a 35% de chance brut de forcer le dé à aller dessus
+    if (trapRolls.length > 0 && Math.random() < 0.35) {
+      dice = trapRolls[Math.floor(Math.random() * trapRolls.length)];
+      console.log(`[KARMA] Le serveur a truqué le dé pour faire tomber ${currentPlayer.name} (pos ${pos}) sur le piège à ${dice} cases !`);
+    }
+
     game.diceValue = dice;
 
     // Calculer la nouvelle position
@@ -289,17 +321,60 @@ io.on('connection', (socket) => {
     if (player.jokerUsed) return callback?.({ ok: false, error: 'Joker déjà utilisé !' });
 
     player.jokerUsed = true;
+    game.jokerVote = {
+      playerId: player.id,
+      yes: 0,
+      no: 0,
+      voters: []
+    };
+
     io.to(game.code).emit('joker_used', { playerName: player.name, playerId: player.id });
-    console.log(`[JOKER] ${player.name}`);
+    console.log(`[JOKER] ${player.name} lance un vote de Joker`);
     broadcastGame(game);
     callback?.({ ok: true });
+
+    // Auto pass if testing alone
+    if (game.players.length <= 1) {
+      io.to(game.code).emit('joker_vote_result', { passed: true });
+      game.jokerVote = null;
+    }
   });
 
   // ── Vote Joker ────────────────────────────────────────────
   socket.on('vote_joker', ({ accept }) => {
     const game = getGame(socket.data.gameCode);
-    if (!game) return;
-    io.to(game.code).emit('joker_vote', { voterId: socket.id, accept });
+    if (!game || !game.jokerVote) return;
+
+    // Empêcher le double vote ou le vote de l'initiateur
+    if (game.jokerVote.voters.includes(socket.id)) return;
+    if (socket.id === game.jokerVote.playerId) return;
+
+    game.jokerVote.voters.push(socket.id);
+    if (accept) game.jokerVote.yes++;
+    else game.jokerVote.no++;
+
+    const voter = getPlayer(game, socket.id);
+    const voterName = voter ? voter.name : '?';
+    io.to(game.code).emit('joker_vote', { accept, voterName });
+
+    // Dépouillement
+    const totalVoters = game.players.length - 1;
+    if (game.jokerVote.voters.length >= totalVoters) {
+      const passed = game.jokerVote.yes > game.jokerVote.no;
+      io.to(game.code).emit('joker_vote_result', { passed });
+
+      if (!passed) {
+        // Joker refusé => on le rend au joueur
+        const p = getPlayer(game, game.jokerVote.playerId);
+        if (p) p.jokerUsed = false;
+        console.log(`[JOKER] Refusé pour ${p ? p.name : '?'}, Joker rendu.`);
+      } else {
+        console.log(`[JOKER] Accepté !`);
+      }
+
+      game.jokerVote = null;
+      broadcastGame(game);
+    }
   });
 
   // ── Déconnexion ───────────────────────────────────────────
