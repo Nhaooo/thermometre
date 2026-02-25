@@ -248,17 +248,14 @@
     /* ── BOARD (user's exact style, gradient renforcé) ── */
     .stage {
       position: relative;
-      width: min(640px, 96%);
+      width: min(96vw, calc((100dvh - 110px) * 10/7), 920px);
       aspect-ratio: 1000/700;
-      border-radius: 16px;
+      border-radius: 14px;
       overflow: hidden;
-      border: 2px solid rgba(255, 255, 255, .12);
-      box-shadow: 0 0 40px rgba(0, 0, 255, .2), 0 0 40px rgba(255, 0, 0, .2);
-      background: linear-gradient(90deg,
-          rgb(0, 40, 210) 0%,
-          rgb(60, 0, 160) 40%,
-          rgb(160, 0, 40) 70%,
-          rgb(220, 0, 0) 100%);
+      border: 1px solid rgba(255, 255, 255, .12);
+      box-shadow: 0 0 50px rgba(0, 0, 0, .6);
+      background: #06060f;
+      /* fond sombre — le gradient passe UNIQUEMENT par les cases */
     }
 
     .stage svg {
@@ -269,7 +266,7 @@
     }
 
     .stage svg path {
-      stroke: rgba(255, 255, 255, .25);
+      stroke: rgba(255, 255, 255, .12);
       stroke-width: 5;
       fill: none;
       stroke-linecap: round;
@@ -281,9 +278,8 @@
       width: var(--cellW);
       height: var(--cellH);
       border-radius: var(--radius);
-      border: 2px solid rgba(255, 255, 255, .5);
-      background: rgba(255, 255, 255, .18);
-      backdrop-filter: blur(2px);
+      border: 2px solid rgba(255, 255, 255, .4);
+      /* background set by JS via Y-position gradient */
       display: grid;
       place-items: center;
       font-weight: 900;
@@ -797,10 +793,14 @@
         const t = (i + 0.5) / N;
         const p = path.getPointAtLength(SOFF + t * (L - 2 * SOFF));
         const lp = (p.x / VBW * 100).toFixed(3), tp = (p.y / VBH * 100).toFixed(3);
+        // Couleur selon Y : haut=chaud(rouge), bas=froid(bleu)
+        const yRatio = tp / 100; // 0=haut/red, 1=bas/blue
+        const cr = Math.round(200 - yRatio * 200), cg = Math.round(0), cb = Math.round(yRatio * 210);
         const hot = sq.type === 'hot' || sq.type === 'GH';
         const div = document.createElement('div');
         div.className = 'cell' + (hot ? ' barred' : '') + (sq.type === 'start' ? ' is-start' : sq.type === 'finish' ? ' is-finish' : '');
         div.id = 'cell-' + i;
+        div.style.background = `rgba(${cr},${cg},${cb},0.72)`;
         div.style.left = 'calc(' + lp + '% - (var(--cellW)/2))';
         div.style.top = 'calc(' + tp + '% - (var(--cellH)/2))';
         let lbl = '';
