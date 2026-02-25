@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
   <title>🌡️ Le Thermomètre</title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Outfit:wght@800;900&display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..900&family=Outfit:wght@400..900&display=swap"
     rel="stylesheet" />
   <script src="/socket.io/socket.io.js"></script>
   <style>
@@ -745,6 +745,26 @@
       <button class="btn btn-hot" id="btn-start">🚀 Lancer</button>
     </div>
     <p id="lobby-msg" style="color:var(--muted);font-size:.78rem;text-align:center;"></p>
+
+    <!-- THERMOMETER HOST -->
+    <div id="lobby-thermo-wrapper" style="display:none; width:100%; max-width:360px; margin-top:1rem; cursor:pointer;"
+      onclick="triggerThermo()">
+      <div
+        style="display:flex; justify-content:space-between; color:var(--text); font-size:0.85rem; font-weight:800; margin-bottom:0.5rem;">
+        <span>Chauffe la salle ! 🔥</span>
+        <span id="thermo-val">0.0°</span>
+      </div>
+      <div class="thermo-track"
+        style="position:relative; height:36px; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.1); border-radius:999px; overflow:hidden; box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);">
+        <div id="thermo-fill"
+          style="position:absolute; top:0; left:0; height:100%; width:0%; background:linear-gradient(90deg, #00d2ff, #a855f7, #ff3333); transition: box-shadow 0.2s; box-shadow:0 0 16px rgba(0,210,255,0.5);">
+        </div>
+      </div>
+      <div
+        style="display:flex; justify-content:space-between; color:var(--muted); font-size:0.65rem; font-weight:800; margin-top:0.4rem; padding:0 0.5rem;">
+        <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
+      </div>
+    </div>
   </div>
 
   <!-- GAME -->
@@ -996,6 +1016,13 @@
       } else {
         $('lobby-qr').style.display = 'none';
       }
+
+      // Afficher le faux thermomètre uniquement pour le créateur
+      if (isHost) {
+        $('lobby-thermo-wrapper').style.display = 'block';
+      } else {
+        $('lobby-thermo-wrapper').style.display = 'none';
+      }
     }
     function drawAv(cv, color, init) { const c = cv.getContext('2d'); c.fillStyle = color; c.beginPath(); c.arc(12, 12, 10, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 9px Nunito,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(init.toUpperCase(), 12, 12); }
 
@@ -1031,6 +1058,40 @@
       rollBtn.disabled = !(isMyTurn && !rolled);
       endBtn.style.display = (isMyTurn && rolled) ? '' : 'none';
     }
+
+    // ── ANIMATION DU FAUX THERMOMETRE LOBBY ──
+    let thermoTriggered = false;
+    window.triggerThermo = window.triggerThermo || function () {
+      if (thermoTriggered) return;
+      thermoTriggered = true;
+      const target = 7.0 + Math.random() * 1.7; // 7.0 to 8.7 max
+      const duration = 2200;
+      const start = Date.now();
+
+      function update() {
+        const now = Date.now();
+        const t = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3); // Ease out
+        const currentVal = target * ease;
+        const percent = (currentVal / 10) * 100;
+
+        $('thermo-fill').style.width = percent + '%';
+        $('thermo-val').textContent = currentVal.toFixed(1) + '°';
+
+        // Change glow according to temp
+        if (currentVal < 4) {
+          $('thermo-fill').style.boxShadow = '0 0 16px rgba(0, 210, 255, 0.6)';
+        } else if (currentVal < 7) {
+          $('thermo-fill').style.boxShadow = '0 0 16px rgba(168, 85, 247, 0.6)';
+        } else {
+          $('thermo-fill').style.boxShadow = '0 0 16px rgba(255, 51, 51, 0.8)';
+        }
+
+        if (t < 1) requestAnimationFrame(update);
+        else $('thermo-val').textContent = target.toFixed(1) + '° 🔥';
+      }
+      requestAnimationFrame(update);
+    };
 
     // ── TOAST DE CASE (pas de popup, on décide entre nous) ──
     function showCaseToast(sq, playerName, isHot) {
@@ -1082,7 +1143,16 @@
     $('btn-roll-mob').onclick = () => { if (!$('btn-roll-mob').disabled) doRoll($('dice-mob')); };
     $('btn-end-turn-mob').addEventListener('click', doEnd);
     $('btn-joker-mob').addEventListener('click', () => socket.emit('use_joker'));
-    $('btn-replay').onclick = () => { myGameCode = null; currentState = null; boardReady = false; document.querySelectorAll('.cell,.player-token').forEach(e => e.remove()); showScreen('home'); $('home-name').value = ''; $('home-code').value = ''; };
+    $('btn-replay').onclick = () => {
+      myGameCode = null; currentState = null; boardReady = false;
+      document.querySelectorAll('.cell,.player-token').forEach(e => e.remove());
+      thermoTriggered = false;
+      $('thermo-fill').style.width = '0%';
+      $('thermo-val').textContent = '0.0°';
+      showScreen('home');
+      $('home-name').value = '';
+      $('home-code').value = '';
+    };
 
     // Check if user came from a QR code
     window.addEventListener('load', () => {

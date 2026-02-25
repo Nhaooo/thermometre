@@ -182,9 +182,10 @@ io.on('connection', (socket) => {
     const joinUrl = `${protocol}://${host}?code=${code}`;
 
     QRCode.toDataURL(joinUrl, {
-      color: { dark: '#ffffff', light: '#00000000' },
+      color: { dark: '#000000', light: '#ffffff' },
       margin: 2
     }, (err, url) => {
+      games[code].qrUrl = url;
       callback({ ok: true, code, playerId: socket.id, qrUrl: url, joinUrl });
       broadcastGame(games[code]);
     });
