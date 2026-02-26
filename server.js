@@ -49,6 +49,11 @@ app.get('/cards.json', (req, res) => {
   res.sendFile(path.join(__dirname, 'cards.json'));
 });
 
+// Board editor
+app.get('/board-editor.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'board-editor.html'));
+});
+
 // ─────────────────────────────────────────────────────────────
 //  Modèle de données en mémoire
 // ─────────────────────────────────────────────────────────────

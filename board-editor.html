@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>🛠️ Board Editor — Le Thermomètre</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=DM+Mono&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --bg: #0e0d0d;
+            --surface: #1c1a1a;
+            --surface2: #242222;
+            --border: rgba(255, 255, 255, .08);
+            --text: #f0ece4;
+            --muted: #7a7068;
+            --hot: #c0392b;
+            --cold: #1a6fa8;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* TOPBAR */
+        #topbar {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .6rem 1rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        #topbar h1 {
+            font-size: .95rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .tbsp {
+            flex: 1;
+        }
+
+        .tbtn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: .5rem;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: .78rem;
+            font-weight: 600;
+            padding: .35rem .8rem;
+            cursor: pointer;
+            transition: background .15s;
+        }
+
+        .tbtn:hover {
+            background: #2e2c2c;
+        }
+
+        .tbtn.red {
+            background: rgba(192, 57, 43, .2);
+            border-color: var(--hot);
+            color: #e57373;
+        }
+
+        #collision-status {
+            font-size: .72rem;
+            padding: .3rem .7rem;
+            border-radius: .4rem;
+            font-weight: 700;
+        }
+
+        .ok {
+            background: rgba(39, 174, 96, .15);
+            border: 1px solid #27ae60;
+            color: #2ecc71;
+        }
+
+        .ko {
+            background: rgba(192, 57, 43, .15);
+            border: 1px solid var(--hot);
+            color: #e57373;
+        }
+
+        /* MAIN */
+        #main {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+        }
+
+        /* STAGE */
+        #stage-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #0e0d0d;
+            cursor: grab;
+        }
+
+        #stage-wrap:active {
+            cursor: grabbing;
+        }
+
+        #world {
+            position: absolute;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        #board-svg {
+            position: absolute;
+            left: 0;
+            top: 0;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        /* CELLS */
+        .cell-editor {
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(255, 255, 255, .5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, .9);
+            cursor: grab;
+            user-select: none;
+            z-index: 10;
+            transition: border-color .15s, box-shadow .15s;
+            background: transparent;
+        }
+
+        .cell-editor:hover {
+            border-color: rgba(255, 255, 255, .9);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, .15);
+        }
+
+        .cell-editor:active {
+            cursor: grabbing;
+        }
+
+        .cell-editor.dragging {
+            z-index: 100;
+            border-color: #f1c40f;
+            box-shadow: 0 0 0 3px rgba(241, 196, 15, .35);
+        }
+
+        .cell-editor.collide {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, .35);
+        }
+
+        .cell-num {
+            font-size: 9px;
+            font-weight: 500;
+            opacity: .5;
+            position: absolute;
+            top: 5px;
+            left: 7px;
+        }
+
+        .cell-label {
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: .5px;
+        }
+
+        /* SIDE PANEL */
+        #side {
+            width: 300px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        .side-sect {
+            padding: .9rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .side-lbl {
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: .45rem;
+        }
+
+        #coord-display {
+            font-size: .8rem;
+            color: var(--muted);
+            min-height: 1.4rem;
+        }
+
+        #export-out {
+            display: block;
+            flex: 1;
+            min-height: 0;
+            font-family: 'DM Mono', monospace;
+            font-size: .6rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: .5rem;
+            color: #a6e3a1;
+            padding: .6rem;
+            resize: none;
+            overflow-y: auto;
+            width: 100%;
+            outline: none;
+        }
+
+        .copy-btn {
+            width: 100%;
+            margin-top: .5rem;
+            padding: .6rem;
+            background: var(--hot);
+            color: #fff;
+            border: none;
+            border-radius: .55rem;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: .85rem;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+
+        .copy-btn:hover {
+            opacity: .85;
+        }
+
+        .hint {
+            font-size: .68rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        /* ZOOM BUTTONS */
+        #zoom-btns {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            display: flex;
+            gap: 4px;
+            z-index: 50;
+        }
+
+        .zbtn {
+            width: 32px;
+            height: 32px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zbtn:hover {
+            background: var(--surface2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="topbar">
+        <h1>🛠️ Board Editor — Le Thermomètre</h1>
+        <div class="tbsp"></div>
+        <div id="collision-status" class="ok">✓ Pas de collision</div>
+        <button class="tbtn" onclick="editorCenter()">⌖ Reset vue</button>
+        <button class="tbtn red" onclick="resetPositions()">↺ Reset positions</button>
+    </div>
+
+    <div id="main">
+        <div id="stage-wrap">
+            <div id="world">
+                <svg id="board-svg"></svg>
+            </div>
+            <div id="zoom-btns">
+                <button class="zbtn" onclick="eZoom(.2)">+</button>
+                <button class="zbtn" onclick="eZoom(-.2)">−</button>
+                <button class="zbtn" onclick="editorCenter()">⌖</button>
+            </div>
+        </div>
+
+        <div id="side">
+            <div class="side-sect">
+                <div class="side-lbl">ℹ️ Infos</div>
+                <div class="hint">
+                    🖱️ Drag une case pour la déplacer<br />
+                    🔴 Bordure rouge = collision (&lt;82px)<br />
+                    🟡 Bordure jaune = case sélectionnée<br />
+                    📋 Copie le code ci-dessous et envoie-le !
+                </div>
+            </div>
+            <div class="side-sect">
+                <div class="side-lbl">📍 Case sélectionnée</div>
+                <div id="coord-display">—</div>
+            </div>
+            <div class="side-sect" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+                <div class="side-lbl">📋 Export RAW_PTS</div>
+                <textarea id="export-out" readonly spellcheck="false"></textarea>
+                <button class="copy-btn" onclick="copyExport()">📋 Copier le code</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CELL_SZ = 72;
+        const BOARD_TYPES = [
+            'start', 'cold', 'GF', 'cold', 'cold', 'barred', 'cold',   // 0-6
+            'cold', 'barred', 'GF', 'G', 'cold', 'G', 'cold',           // 7-13
+            'GH', 'cold', 'cold', 'G', 'cold', 'barred', 'GH',          // 14-20
+            'cold', 'barred', 'GF', 'G', 'GF', 'GH', 'cold',            // 21-27 (approx)
+            'GH', 'cold', 'cold', 'barred', 'barred', 'barred', 'cold', // 28-34
+            'finish'                                               // 35
+        ];
+
+        // Positions de départ (identique au jeu)
+        const DEFAULT_PTS = [
+            { x: 790, y: 80 }, { x: 670, y: 68 }, { x: 540, y: 65 }, { x: 410, y: 72 }, { x: 290, y: 82 },
+            { x: 170, y: 108 }, { x: 95, y: 168 },
+            { x: 155, y: 225 }, { x: 295, y: 215 }, { x: 435, y: 205 },
+            { x: 335, y: 235 }, { x: 210, y: 252 }, { x: 88, y: 268 }, { x: 45, y: 310 }, { x: 68, y: 355 }, { x: 148, y: 368 },
+            { x: 290, y: 372 }, { x: 435, y: 371 }, { x: 575, y: 370 }, { x: 715, y: 372 }, { x: 800, y: 408 },
+            { x: 768, y: 455 }, { x: 645, y: 462 },
+            { x: 510, y: 464 }, { x: 370, y: 466 }, { x: 235, y: 468 }, { x: 112, y: 472 }, { x: 60, y: 512 },
+            { x: 90, y: 558 }, { x: 212, y: 562 }, { x: 340, y: 558 }, { x: 455, y: 556 },
+            { x: 350, y: 588 }, { x: 222, y: 592 }, { x: 108, y: 596 }, { x: 78, y: 638 },
+        ];
+
+        let positions = DEFAULT_PTS.map(p => ({ ...p }));
+
+        // Camera
+        let camX = 0, camY = 0, camScale = 1;
+        let panning = false, panSX = 0, panSY = 0, panCX = 0, panCY = 0;
+        let draggingCell = -1, dragOffX = 0, dragOffY = 0;
+        let pinchD0 = null, pinchS0 = 1;
+
+        function applyTransform() {
+            document.getElementById('world').style.transform =
+                `translate(${camX}px,${camY}px) scale(${camScale})`;
+        }
+        function eZoom(d) {
+            const w = document.getElementById('stage-wrap');
+            const cx = w.offsetWidth / 2, cy = w.offsetHeight / 2;
+            const ns = Math.max(.2, Math.min(3, camScale + d));
+            camX = cx - (cx - camX) * (ns / camScale); camY = cy - (cy - camY) * (ns / camScale); camScale = ns;
+            applyTransform();
+        }
+        function editorCenter() {
+            const w = document.getElementById('stage-wrap');
+            const xs = positions.map(p => p.x), ys = positions.map(p => p.y);
+            const bx = Math.min(...xs) - 10, by = Math.min(...ys) - 10;
+            const bw = Math.max(...xs) + CELL_SZ + 10 - bx, bh = Math.max(...ys) + CELL_SZ + 10 - by;
+            camScale = Math.max(.2, Math.min(2, Math.min(w.offsetWidth / bw, w.offsetHeight / bh) * .9));
+            camX = (w.offsetWidth - bw * camScale) / 2 - bx * camScale;
+            camY = (w.offsetHeight - bh * camScale) / 2 - by * camScale;
+            applyTransform();
+        }
+
+        // ── RENDERING ──
+        let svgEl, clipPath, gradRect;
+        const cellEls = [];
+
+        function initEditor() {
+            const world = document.getElementById('world');
+            svgEl = document.getElementById('board-svg');
+
+            // Build SVG structure
+            const NS = 'http://www.w3.org/2000/svg';
+            const defs = document.createElementNS(NS, 'defs');
+
+            // Gradient
+            const grad = document.createElementNS(NS, 'linearGradient');
+            grad.id = 'ed-grad'; grad.setAttribute('x1', '0%'); grad.setAttribute('y1', '0%');
+            grad.setAttribute('x2', '100%'); grad.setAttribute('y2', '0%');
+            [['0%', 'hsl(0,90%,38%)'], ['20%', 'hsl(10,88%,32%)'], ['50%', 'hsl(285,75%,30%)'], ['75%', 'hsl(230,84%,32%)'], ['100%', 'hsl(220,92%,28%)']].forEach(([off, c]) => {
+                const s = document.createElementNS(NS, 'stop'); s.setAttribute('offset', off); s.setAttribute('stop-color', c); grad.appendChild(s);
+            });
+            defs.appendChild(grad);
+
+            // ClipPath
+            clipPath = document.createElementNS(NS, 'clipPath');
+            clipPath.id = 'ed-clip';
+            positions.forEach((_, i) => {
+                const r = document.createElementNS(NS, 'rect');
+                r.id = 'clip-rect-' + i;
+                r.setAttribute('width', CELL_SZ); r.setAttribute('height', CELL_SZ);
+                r.setAttribute('rx', 14); r.setAttribute('ry', 14);
+                clipPath.appendChild(r);
+            });
+            defs.appendChild(clipPath);
+            svgEl.appendChild(defs);
+
+            // Gradient rect (clipped)
+            gradRect = document.createElementNS(NS, 'rect');
+            gradRect.setAttribute('fill', 'url(#ed-grad)');
+            gradRect.setAttribute('clip-path', 'url(#ed-clip)');
+            svgEl.appendChild(gradRect);
+
+            // Connectors (SVG lines)
+            positions.forEach((_, i) => {
+                if (i < positions.length - 1) {
+                    const l = document.createElementNS(NS, 'line');
+                    l.id = 'conn-' + i;
+                    l.setAttribute('stroke', 'rgba(255,255,255,0.15)');
+                    l.setAttribute('stroke-width', '3');
+                    l.setAttribute('stroke-linecap', 'round');
+                    svgEl.appendChild(l);
+                }
+            });
+
+            // Cell divs
+            positions.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'cell-editor';
+                div.id = 'cell-ed-' + i;
+                const type = BOARD_TYPES[i] || 'hot';
+                let inner = `<div class="cell-num">${i}</div>`;
+                if (type === 'start') inner += '<div class="cell-label">▶</div>';
+                else if (type === 'finish') inner += '<div class="cell-label">🏆</div>';
+                else if (['G', 'GH', 'GF'].includes(type)) inner += `<div class="cell-label">${type}</div>`;
+                else if (type === 'barred') inner += '<div style="position:absolute;width:55%;height:2px;background:rgba(255,255,255,.8);transform:rotate(45deg)"></div><div style="position:absolute;width:55%;height:2px;background:rgba(255,255,255,.8);transform:rotate(-45deg)"></div>';
+                div.innerHTML = inner;
+
+                // Drag events
+                div.addEventListener('mousedown', e => {
+                    if (e.button !== 0) return;
+                    e.stopPropagation();
+                    draggingCell = i;
+                    const worldRect = document.getElementById('world').getBoundingClientRect();
+                    dragOffX = (e.clientX - worldRect.left) / camScale - positions[i].x;
+                    dragOffY = (e.clientY - worldRect.top) / camScale - positions[i].y;
+                    div.classList.add('dragging');
+                    document.getElementById('coord-display').textContent = `Case ${i} — x:${Math.round(positions[i].x)} y:${Math.round(positions[i].y)}`;
+                });
+
+                world.appendChild(div);
+                cellEls.push(div);
+            });
+
+            fullRedraw();
+            setTimeout(editorCenter, 60);
+            updateExport();
+        }
+
+        function fullRedraw() {
+            const NS = 'http://www.w3.org/2000/svg';
+            const xs = positions.map(p => p.x), ys = positions.map(p => p.y);
+            const maxXe = Math.max(...xs) + CELL_SZ + 20, maxYe = Math.max(...ys) + CELL_SZ + 20;
+            const minXe = Math.min(0, Math.min(...xs) - 10), minYe = Math.min(0, Math.min(...ys) - 10);
+            const W = maxXe - minXe, H = maxYe - minYe;
+            svgEl.setAttribute('width', W); svgEl.setAttribute('height', H);
+            svgEl.style.left = minXe + 'px'; svgEl.style.top = minYe + 'px';
+            gradRect.setAttribute('x', minXe); gradRect.setAttribute('y', minYe);
+            gradRect.setAttribute('width', W); gradRect.setAttribute('height', H);
+
+            // Update clip rects + connectors + cell divs
+            positions.forEach((p, i) => {
+                // clip rect
+                const cr = document.getElementById('clip-rect-' + i);
+                cr.setAttribute('x', p.x); cr.setAttribute('y', p.y);
+
+                // connector to next
+                if (i < positions.length - 1) {
+                    const np = positions[i + 1];
+                    const l = document.getElementById('conn-' + i);
+                    l.setAttribute('x1', p.x + CELL_SZ / 2); l.setAttribute('y1', p.y + CELL_SZ / 2);
+                    l.setAttribute('x2', np.x + CELL_SZ / 2); l.setAttribute('y2', np.y + CELL_SZ / 2);
+                }
+
+                // cell div
+                const el = cellEls[i];
+                el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+            });
+
+            checkCollisions();
+        }
+
+        function checkCollisions() {
+            const MIN_D = 82;
+            const colliding = new Set();
+            for (let a = 0; a < positions.length; a++) {
+                for (let b = a + 1; b < positions.length; b++) {
+                    const dx = positions[b].x - positions[a].x, dy = positions[b].y - positions[a].y;
+                    if (Math.sqrt(dx * dx + dy * dy) < MIN_D) { colliding.add(a); colliding.add(b); }
+                }
+            }
+            cellEls.forEach((el, i) => {
+                el.classList.toggle('collide', colliding.has(i) && i !== draggingCell);
+            });
+            const st = document.getElementById('collision-status');
+            if (colliding.size === 0) { st.textContent = '✓ Pas de collision'; st.className = 'ok'; }
+            else { st.textContent = `⚠ ${colliding.size} cases en collision`; st.className = 'ko'; }
+        }
+
+        // ── MOUSE / TOUCH ──
+        const sw = () => document.getElementById('stage-wrap');
+
+        window.addEventListener('mousemove', e => {
+            if (draggingCell >= 0) {
+                const worldRect = document.getElementById('world').getBoundingClientRect();
+                positions[draggingCell].x = (e.clientX - worldRect.left) / camScale - dragOffX;
+                positions[draggingCell].y = (e.clientY - worldRect.top) / camScale - dragOffY;
+                fullRedraw();
+                document.getElementById('coord-display').textContent =
+                    `Case ${draggingCell} — x:${Math.round(positions[draggingCell].x)} y:${Math.round(positions[draggingCell].y)}`;
+                updateExport();
+            } else if (panning) {
+                camX = panCX + (e.clientX - panSX); camY = panCY + (e.clientY - panSY); applyTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (draggingCell >= 0) { cellEls[draggingCell].classList.remove('dragging'); draggingCell = -1; }
+            panning = false;
+        });
+
+        document.getElementById('stage-wrap').addEventListener('mousedown', e => {
+            if (draggingCell < 0) { panning = true; panSX = e.clientX; panSY = e.clientY; panCX = camX; panCY = camY; }
+        });
+
+        document.getElementById('stage-wrap').addEventListener('wheel', e => {
+            e.preventDefault();
+            const d = e.deltaY > 0 ? -.12 : .12;
+            const rect = sw().getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const ns = Math.max(.2, Math.min(3, camScale + d));
+            camX = mx - (mx - camX) * (ns / camScale); camY = my - (my - camY) * (ns / camScale); camScale = ns;
+            applyTransform();
+        }, { passive: false });
+
+        // Touch
+        document.getElementById('stage-wrap').addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                pinchD0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                pinchS0 = camScale;
+            } else if (e.touches.length === 1 && draggingCell < 0) {
+                panning = true; panSX = e.touches[0].clientX; panSY = e.touches[0].clientY; panCX = camX; panCY = camY;
+            }
+        }, { passive: true });
+
+        document.getElementById('stage-wrap').addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 2 && pinchD0) {
+                const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                const ns = Math.max(.2, Math.min(3, pinchS0 * d / pinchD0));
+                const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - sw().getBoundingClientRect().left;
+                const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - sw().getBoundingClientRect().top;
+                camX = mx - (mx - camX) * (ns / camScale); camY = my - (my - camY) * (ns / camScale); camScale = ns;
+                applyTransform();
+            } else if (e.touches.length === 1 && panning) {
+                camX = panCX + (e.touches[0].clientX - panSX); camY = panCY + (e.touches[0].clientY - panSY); applyTransform();
+            }
+        }, { passive: false });
+
+        document.getElementById('stage-wrap').addEventListener('touchend', () => { panning = false; pinchD0 = null; });
+
+        // ── FUNCTIONS ──
+        function updateExport() {
+            const lines = positions.map((p, i) => `  {x:${Math.round(p.x)},y:${Math.round(p.y)}}${i < positions.length - 1 ? ',' : ''}  // ${i}${i === 0 ? ' START' : i === positions.length - 1 ? ' FINISH' : ''}`);
+            document.getElementById('export-out').value =
+                `const RAW_PTS = [\n${lines.join('\n')}\n];`;
+        }
+
+        function copyExport() {
+            const ta = document.getElementById('export-out');
+            ta.select(); document.execCommand('copy');
+            const btn = document.querySelector('.copy-btn');
+            btn.textContent = '✅ Copié !';
+            setTimeout(() => btn.textContent = '📋 Copier le code', 2000);
+        }
+
+        function resetPositions() {
+            if (!confirm('Remettre les positions par défaut ?')) return;
+            positions = DEFAULT_PTS.map(p => ({ ...p }));
+            fullRedraw(); editorCenter(); updateExport();
+        }
+
+        // ── INIT ──
+        initEditor();
+    </script>
+</body>
+
+</html>
