@@ -2,1489 +2,1214 @@
 <html lang="fr">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
-  <title>🌡️ Le Thermomètre</title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..900&family=Outfit:wght@400..900&display=swap"
-    rel="stylesheet" />
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0
-    }
-
-    :root {
-      --cellW: 42px;
-      --cellH: 42px;
-      --radius: 12px;
-      --hot: #ff3333;
-      --cold: #00d2ff;
-      --bg-dark: #07050f;
-      --bg-grad: radial-gradient(circle at 10% -10%, #20133c 0%, #07050f 100%);
-      --card-bg: rgba(255, 255, 255, 0.04);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --card-blur: blur(24px);
-      --text: #ffffff;
-      --muted: #8b8fb0;
-      --joker: #b624ff;
-      --safe: env(safe-area-inset-bottom, 0px);
-      --safe: env(safe-area-inset-bottom, 0px);
-    }
-
-    html,
-    body {
-      height: 100%;
-      overflow: hidden;
-    }
-
-    body {
-      font-family: 'Nunito', sans-serif;
-      background: var(--bg-dark);
-      background-image: var(--bg-grad);
-      color: var(--text);
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* SCREENS */
-    .screen {
-      display: none;
-      height: 100dvh;
-      flex-direction: column;
-    }
-
-    .screen.active {
-      display: flex;
-    }
-
-    #screen-home,
-    #screen-lobby,
-    #screen-finish {
-      align-items: center;
-      justify-content: center;
-      gap: 1.2rem;
-      padding: 1.5rem;
-      overflow-y: auto;
-    }
-
-    /* COMMON */
-    .card {
-      background: var(--card-bg);
-      backdrop-filter: var(--card-blur);
-      -webkit-backdrop-filter: var(--card-blur);
-      border-radius: 1.5rem;
-      padding: 1.5rem;
-      border: 1px solid var(--card-border);
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 10px 40px rgba(0, 0, 0, 0.4);
-    }
-
-    .btn {
-      font-family: 'Nunito', sans-serif;
-      font-weight: 900;
-      font-size: 1.05rem;
-      border: none;
-      border-radius: 999px;
-      padding: 0.8rem 1.8rem;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-      white-space: nowrap;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .btn:hover {
-      transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .btn:active {
-      transform: translateY(1px) scale(0.98);
-      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
-    }
-
-    .btn-hot {
-      background: linear-gradient(135deg, #ff416c, #ff4b2b);
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(255, 75, 43, 0.3);
-    }
-
-    .btn-cold {
-      background: linear-gradient(135deg, #00d2ff, #3a7bd5);
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(0, 210, 255, 0.3);
-    }
-
-    .btn-ghost {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      backdrop-filter: blur(8px);
-    }
-
-    .btn-ghost:hover {
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    .btn-joker {
-      background: linear-gradient(135deg, #8a2387, #e94057, #f27121);
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(233, 64, 87, 0.3);
-    }
-
-    .btn-sm {
-      font-size: 0.9rem;
-      padding: 0.6rem 1.2rem;
-    }
-
-    .btn-disabled {
-      opacity: .35;
-      cursor: not-allowed;
-      transform: none !important;
-      box-shadow: none !important;
-    }
-
-    .logo {
-      font-family: 'Outfit', sans-serif;
-      font-size: clamp(2rem, 8vw, 4rem);
-      background: linear-gradient(90deg, #00d2ff, #a855f7, #ff416c);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-align: center;
-      filter: drop-shadow(0 4px 12px rgba(168, 85, 247, 0.3));
-    }
-
-    .input {
-      background: rgba(0, 0, 0, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.1);
-      border-radius: 1rem;
-      padding: 0.9rem 1.2rem;
-      color: var(--text);
-      font-family: 'Nunito', sans-serif;
-      font-size: 1.05rem;
-      font-weight: 700;
-      width: 100%;
-      outline: none;
-      transition: all 0.25s ease;
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .input:focus {
-      border-color: #ff416c;
-      background: rgba(0, 0, 0, 0.4);
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(255, 65, 108, 0.2);
-    }
-
-    .input::placeholder {
-      color: var(--muted);
-    }
-
-    /* LOBBY */
-    #lobby-players {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .55rem;
-      justify-content: center;
-    }
-
-    .player-chip {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 999px;
-      padding: 0.4rem 1rem;
-      font-weight: 800;
-      border: 2px solid rgba(255, 255, 255, 0.05);
-      font-size: 0.9rem;
-      backdrop-filter: blur(8px);
-    }
-
-    .player-chip.ready {
-      border-color: #2ecc71;
-    }
-
-    .player-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-    }
-
-    /* GAME */
-    #game-topbar {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 0.6rem 1rem;
-      overflow-x: auto;
-      flex-shrink: 0;
-      scrollbar-width: none;
-    }
-
-    #game-topbar::-webkit-scrollbar {
-      display: none;
-    }
-
-    .tb-chip {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 999px;
-      padding: 0.35rem 0.8rem;
-      font-size: 0.8rem;
-      font-weight: 800;
-      flex-shrink: 0;
-      border: 2px solid transparent;
-      transition: all 0.2s;
-    }
-
-    .tb-chip.active {
-      border-color: #ff8c00;
-      background: rgba(255, 140, 0, .18);
-    }
-
-    .tb-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-
-    #game-main {
-      flex: 1;
-      display: flex;
-      flex-direction: row;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    #game-board-col {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: .4rem;
-      overflow: hidden;
-    }
-
-    /* ── BOARD – responsive ── */
-    .stage {
-      position: relative;
-      border-radius: 1.5rem;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8), 0 20px 60px rgba(0, 0, 0, 0.6);
-      background: rgba(0, 0, 0, 0.25);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      /* Landscape default */
-      width: min(96vw, calc((100dvh - 110px) * 10/7), 920px);
-      aspect-ratio: 10/7;
-    }
-
-    .stage svg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    .stage svg path {
-      stroke: rgba(255, 255, 255, 0.08);
-      stroke-width: 6;
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.05));
-    }
-
-    .cell {
-      position: absolute;
-      width: var(--cellW);
-      height: var(--cellH);
-      border-radius: var(--radius);
-      border: 2px solid rgba(255, 255, 255, 0.6);
-      /* background set by JS via Y-position gradient */
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.95);
-      letter-spacing: 0.5px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-      user-select: none;
-      z-index: 2;
-      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(4px);
-    }
-
-    .cell.barred .x1,
-    .cell.barred .x2 {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 65%;
-      height: 2.5px;
-      background: rgba(255, 255, 255, 0.9);
-      border-radius: 2px;
-    }
-
-    .cell.barred .x1 {
-      transform: translate(-50%, -50%) rotate(45deg);
-    }
-
-    .cell.barred .x2 {
-      transform: translate(-50%, -50%) rotate(-45deg);
-    }
-
-    .cell.is-start {
-      background: rgba(0, 100, 255, .5);
-      border-color: #44aaff;
-    }
-
-    .cell.is-finish {
-      background: rgba(255, 80, 0, .5);
-      border-color: #ffaa44;
-    }
-
-    .player-token {
-      position: absolute;
-      z-index: 10;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 2.5px solid #fff;
-      display: grid;
-      place-items: center;
-      font-size: 11px;
-      font-weight: 900;
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      transition: left .4s ease, top .4s ease;
-    }
-
-    /* SIDE PANEL */
-    #game-side {
-      width: 260px;
-      min-width: 220px;
-      flex-shrink: 0;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-left: 1px solid rgba(255, 255, 255, 0.05);
-      display: flex;
-      flex-direction: column;
-      padding: 1.2rem;
-      gap: 1rem;
-      overflow-y: auto;
-    }
-
-    .side-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: .95rem;
-      color: #ff8c00;
-    }
-
-    .side-player {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.6rem 0.8rem;
-      border-radius: 0.8rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 2px solid transparent;
-      transition: all 0.3s;
-    }
-
-    .side-player.active {
-      border-color: #ff416c;
-      background: linear-gradient(90deg, rgba(255, 65, 108, 0.15), rgba(255, 65, 108, 0.02));
-      transform: translateX(4px);
-    }
-
-    .side-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .side-name {
-      font-weight: 700;
-      flex: 1;
-      font-size: .8rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .cur-name {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.05rem;
-      text-align: center;
-    }
-
-    .joker-badge {
-      font-size: .55rem;
-      background: var(--joker);
-      border-radius: 999px;
-      padding: 1px 4px;
-      color: #fff;
-    }
-
-    #dice-el {
-      width: 60px;
-      height: 60px;
-      border-radius: 1rem;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.1), 0 8px 16px rgba(0, 0, 0, 0.4);
-      font-size: 2.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    }
-
-    .rolling {
-      animation: spin .6s ease-in-out;
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0)scale(1)
-      }
-
-      25% {
-        transform: rotate(15deg)scale(1.2)
-      }
-
-      50% {
-        transform: rotate(-10deg)scale(.9)
-      }
-
-      75% {
-        transform: rotate(8deg)scale(1.1)
-      }
-
-      100% {
-        transform: rotate(0)scale(1)
-      }
-    }
-
-    /* MOBILE BOTTOM BAR */
-    #game-bottombar {
-      display: none;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 0.8rem 1rem calc(0.8rem + var(--safe));
-      flex-shrink: 0;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.8rem;
-    }
-
-    #dice-mob {
-      width: 44px;
-      height: 44px;
-      border-radius: 0.8rem;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      font-size: 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1), 0 4px 8px rgba(0, 0, 0, 0.4);
-      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    }
-
-    @media(max-width:600px) {
-      #game-side {
-        display: none;
-      }
-
-      #game-bottombar {
-        display: flex;
-      }
-
-      #game-board-col {
-        padding: 0;
-        align-items: stretch;
-        justify-content: stretch;
-      }
-
-      .stage {
-        width: 100% !important;
-        height: 100% !important;
-        aspect-ratio: unset !important;
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-      }
-    }
-
-    /* MODAL */
-    #modal-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: rgba(0, 0, 0, .82);
-      backdrop-filter: blur(8px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-
-    #modal-overlay.open {
-      display: flex;
-    }
-
-    #modal-box {
-      background: rgba(20, 15, 30, 0.85);
-      backdrop-filter: blur(40px);
-      -webkit-backdrop-filter: blur(40px);
-      border-radius: 2rem;
-      padding: 2.2rem;
-      max-width: 440px;
-      width: 100%;
-      text-align: center;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8), inset 0 2px 2px rgba(255, 255, 255, 0.05);
-      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    @keyframes popIn {
-      from {
-        transform: scale(.7);
-        opacity: 0
-      }
-
-      to {
-        transform: scale(1);
-        opacity: 1
-      }
-    }
-
-    .modal-icon {
-      font-size: 2.6rem;
-      margin-bottom: .55rem;
-    }
-
-    .modal-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.45rem;
-      margin-bottom: .3rem;
-    }
-
-    .modal-desc {
-      color: var(--muted);
-      font-size: .88rem;
-      line-height: 1.6;
-      margin-bottom: 1.1rem;
-      white-space: pre-line;
-    }
-
-    .modal-hot .modal-title {
-      color: var(--hot);
-    }
-
-    .modal-cold .modal-title {
-      color: var(--cold);
-    }
-
-    .modal-gage .modal-title {
-      color: #ff8c00;
-    }
-
-    .modal-joker .modal-title {
-      color: var(--joker);
-    }
-
-    /* CARTES À PIOCHER */
-    #modal-box .cards-container {
-      display: flex;
-      gap: 0.8rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin: 1.5rem 0;
-    }
-
-    .pick-card {
-      width: 60px;
-      height: 90px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .pick-card:hover {
-      transform: translateY(-8px) scale(1.05);
-      box-shadow: 0 12px 24px rgba(0, 210, 255, 0.4);
-      border-color: rgba(0, 210, 255, 0.8);
-    }
-
-    .pick-card.flipping {
-      transform: rotateY(90deg) scale(1.1);
-      opacity: 0.5;
-      pointer-events: none;
-    }
-
-    /* CARTE RÉVÉLÉE */
-    .revealed-card {
-      background: linear-gradient(135deg, rgba(20, 15, 30, 0.9), rgba(10, 5, 15, 0.95));
-      border: 2px solid rgba(255, 255, 255, 0.15);
-      border-radius: 1.2rem;
-      padding: 1.5rem;
-      margin: 1.2rem 0;
-      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.6);
-    }
-
-    .revealed-intensity {
-      display: inline-block;
-      padding: 0.3rem 0.8rem;
-      border-radius: 999px;
-      font-weight: 900;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 0.8rem;
-    }
-
-    .intens-soft {
-      background: rgba(0, 210, 255, 0.2);
-      color: #00d2ff;
-    }
-
-    .intens-mid {
-      background: rgba(168, 85, 247, 0.2);
-      color: #a855f7;
-    }
-
-    .intens-hot {
-      background: rgba(255, 51, 51, 0.2);
-      color: #ff3333;
-    }
-
-    .intens-extreme {
-      background: rgba(255, 140, 0, 0.2);
-      color: #ff8c00;
-      box-shadow: 0 0 12px rgba(255, 140, 0, 0.5);
-    }
-
-    /* FINISH */
-    #confetti-canvas {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 200;
-    }
-
-    .finish-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: clamp(1.6rem, 5vw, 2.8rem);
-      text-align: center;
-    }
-
-    .trophy-anim {
-      font-size: 4.5rem;
-      animation: bounce .9s infinite alternate;
-    }
-
-    @keyframes bounce {
-      from {
-        transform: translateY(0)
-      }
-
-      to {
-        transform: translateY(-16px)
-      }
-    }
-
-    #toast-container {
-      position: fixed;
-      bottom: calc(68px + var(--safe));
-      right: .85rem;
-      z-index: 300;
-      display: flex;
-      flex-direction: column;
-      gap: .32rem;
-    }
-
-    .toast {
-      background: rgba(20, 15, 30, 0.9);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: 0.8rem;
-      padding: 0.8rem 1.2rem;
-      font-size: 0.95rem;
-      font-weight: 800;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      animation: slideIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-      max-width: 250px;
-      color: #fff;
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(110%);
-        opacity: 0
-      }
-
-      to {
-        transform: translateX(0);
-        opacity: 1
-      }
-    }
-
-    @media(min-width:601px) {
-      #toast-container {
-        bottom: 1.2rem;
-      }
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
+    <title>🌡️ Le Thermomètre</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@300;400;500;700&display=swap"
+        rel="stylesheet" />
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --cellW: 42px;
+            --cellH: 42px;
+            --radius: 10px;
+            --hot: #c0392b;
+            --cold: #1a6fa8;
+            --bg: #111010;
+            --surface: #1c1a1a;
+            --surface2: #242222;
+            --border: rgba(255, 255, 255, 0.07);
+            --text: #f0ece4;
+            --muted: #7a7068;
+            --accent: #c0392b;
+            --safe: env(safe-area-inset-bottom, 0px);
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .screen {
+            display: none;
+            height: 100dvh;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        #screen-home,
+        #screen-lobby,
+        #screen-finish {
+            align-items: center;
+            justify-content: center;
+            gap: 1.1rem;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        /* LOGO */
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8rem, 7vw, 3.2rem);
+            font-weight: 900;
+            color: var(--text);
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--hot);
+        }
+
+        /* CARD */
+        .card {
+            background: var(--surface);
+            border-radius: 1.2rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        /* INPUTS */
+        .input {
+            background: var(--surface2);
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.85rem 1.1rem;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input:focus {
+            border-color: var(--hot);
+        }
+
+        .input::placeholder {
+            color: var(--muted);
+        }
+
+        /* BUTTONS */
+        .btn {
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.8rem 1.6rem;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-hot {
+            background: #c0392b;
+            color: #fff;
+        }
+
+        .btn-cold {
+            background: #1a6fa8;
+            color: #fff;
+        }
+
+        .btn-ghost {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: #2e2c2c;
+        }
+
+        .btn-joker {
+            background: #7c3bed;
+            color: #fff;
+        }
+
+        .btn-sm {
+            font-size: 0.82rem;
+            padding: 0.55rem 1.1rem;
+        }
+
+        .btn-disabled {
+            opacity: .3;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* SEX SELECTOR */
+        .sex-btn {
+            flex: 1;
+            padding: 0.65rem;
+            font-size: 1.1rem;
+            border: 1.5px solid var(--border);
+            border-radius: 0.75rem;
+            background: var(--surface2);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+        }
+
+        .sex-btn.selected-m {
+            border-color: #1a6fa8;
+            background: rgba(26, 111, 168, 0.15);
+        }
+
+        .sex-btn.selected-f {
+            border-color: #c0392b;
+            background: rgba(192, 57, 43, 0.15);
+        }
+
+        /* LOBBY */
+        #lobby-players {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            justify-content: center;
+        }
+
+        .player-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--surface2);
+            border-radius: 0.6rem;
+            padding: 0.4rem 0.9rem;
+            font-weight: 600;
+            border: 1.5px solid var(--border);
+            font-size: 0.88rem;
+        }
+
+        .player-chip.ready {
+            border-color: #27ae60;
+        }
+
+        .player-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+        }
+
+        /* TOPBAR */
+        #game-topbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.55rem 1rem;
+            overflow-x: auto;
+            flex-shrink: 0;
+            scrollbar-width: none;
+        }
+
+        #game-topbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tb-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: var(--surface2);
+            border-radius: 0.5rem;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            flex-shrink: 0;
+            border: 1.5px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tb-chip.active {
+            border-color: var(--hot);
+            background: rgba(192, 57, 43, 0.12);
+        }
+
+        .tb-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        /* GAME LAYOUT */
+        #game-main {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        #game-board-col {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: .4rem;
+            overflow: hidden;
+        }
+
+        /* BOARD */
+        .stage {
+            position: relative;
+            border-radius: 1.2rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+            background: #171515;
+            width: min(96vw, calc((100dvh - 110px) * 10/7), 920px);
+            aspect-ratio: 10/7;
+        }
+
+        .stage svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .stage svg path {
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 4;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .cell {
+            position: absolute;
+            width: var(--cellW);
+            height: var(--cellH);
+            border-radius: var(--radius);
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.3px;
+            user-select: none;
+            z-index: 2;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .cell.barred .x1,
+        .cell.barred .x2 {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 65%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 2px;
+        }
+
+        .cell.barred .x1 {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .cell.barred .x2 {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+
+        .cell.is-start {
+            background: rgba(26, 90, 180, .55);
+            border-color: #4e9fdd;
+        }
+
+        .cell.is-finish {
+            background: rgba(180, 80, 0, .55);
+            border-color: #e09040;
+        }
+
+        .player-token {
+            position: absolute;
+            z-index: 10;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            display: grid;
+            place-items: center;
+            font-size: 10px;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: left .4s ease, top .4s ease;
+        }
+
+        /* SIDE PANEL */
+        #game-side {
+            width: 240px;
+            min-width: 200px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 0.9rem;
+            overflow-y: auto;
+        }
+
+        .side-title {
+            font-family: 'Playfair Display', serif;
+            font-size: .88rem;
+            color: var(--hot);
+            letter-spacing: 0.3px;
+        }
+
+        .side-player {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.5rem 0.7rem;
+            border-radius: 0.6rem;
+            background: var(--surface2);
+            border: 1.5px solid transparent;
+            transition: all 0.25s;
+        }
+
+        .side-player.active {
+            border-color: var(--hot);
+            background: rgba(192, 57, 43, 0.1);
+        }
+
+        .side-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .side-name {
+            font-weight: 600;
+            flex: 1;
+            font-size: .78rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cur-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .joker-badge {
+            font-size: .5rem;
+            background: #7c3bed;
+            border-radius: 999px;
+            padding: 1px 4px;
+            color: #fff;
+        }
+
+        #dice-el {
+            width: 56px;
+            height: 56px;
+            border-radius: 0.8rem;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .rolling {
+            animation: spin .55s ease-in-out;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0)scale(1)
+            }
+
+            25% {
+                transform: rotate(14deg)scale(1.18)
+            }
+
+            50% {
+                transform: rotate(-9deg)scale(0.9)
+            }
+
+            75% {
+                transform: rotate(7deg)scale(1.08)
+            }
+
+            100% {
+                transform: rotate(0)scale(1)
+            }
+        }
+
+        /* MOBILE BOTTOMBAR */
+        #game-bottombar {
+            display: none;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 0.75rem 1rem calc(0.75rem + var(--safe));
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.7rem;
+        }
+
+        #dice-mob {
+            width: 42px;
+            height: 42px;
+            border-radius: 0.7rem;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        @media(max-width:600px) {
+            #game-side {
+                display: none;
+            }
+
+            #game-bottombar {
+                display: flex;
+            }
+
+            #game-board-col {
+                padding: 0;
+                align-items: stretch;
+                justify-content: stretch;
+            }
+
+            .stage {
+                width: 100% !important;
+                height: 100% !important;
+                aspect-ratio: unset !important;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+        }
+
+        /* MODAL */
+        #modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, .85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        #modal-overlay.open {
+            display: flex;
+        }
+
+        #modal-box {
+            background: var(--surface);
+            border-radius: 1.4rem;
+            padding: 2rem;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(.75);
+                opacity: 0
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1
+            }
+        }
+
+        .modal-icon {
+            font-size: 2.2rem;
+            margin-bottom: .45rem;
+        }
+
+        .modal-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.35rem;
+            margin-bottom: .25rem;
+        }
+
+        .modal-desc {
+            color: var(--muted);
+            font-size: .85rem;
+            line-height: 1.65;
+            margin-bottom: 1rem;
+            white-space: pre-line;
+        }
+
+        .modal-hot .modal-title {
+            color: var(--hot);
+        }
+
+        .modal-cold .modal-title {
+            color: var(--cold);
+        }
+
+        .modal-joker .modal-title {
+            color: #7c3bed;
+        }
+
+        /* PICK CARDS */
+        #modal-box .cards-container {
+            display: flex;
+            gap: 0.7rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1.2rem 0;
+        }
+
+        .pick-card {
+            width: 58px;
+            height: 88px;
+            background: var(--surface2);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: 0.6rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .pick-card:hover {
+            transform: translateY(-7px) scale(1.06);
+            border-color: rgba(192, 57, 43, 0.7);
+            box-shadow: 0 12px 24px rgba(192, 57, 43, 0.25);
+        }
+
+        .pick-card.flipping {
+            transform: rotateY(90deg);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* REVEALED CARD */
+        .revealed-card {
+            background: var(--surface2);
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+            padding: 1.4rem;
+            margin: 1rem 0;
+        }
+
+        /* FINISH */
+        #confetti-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        .finish-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.6rem, 5vw, 2.8rem);
+            text-align: center;
+        }
+
+        .trophy-anim {
+            font-size: 4rem;
+            animation: bounce .9s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0)
+            }
+
+            to {
+                transform: translateY(-14px)
+            }
+        }
+
+        /* TOAST */
+        #toast-container {
+            position: fixed;
+            bottom: calc(68px + var(--safe));
+            right: .8rem;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: .28rem;
+        }
+
+        .toast {
+            background: var(--surface);
+            border-radius: 0.7rem;
+            padding: 0.7rem 1.1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+            max-width: 240px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(110%);
+                opacity: 0
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1
+            }
+        }
+
+        @media(min-width:601px) {
+            #toast-container {
+                bottom: 1rem;
+            }
+        }
+
+        /* DIVIDER */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            color: var(--muted);
+        }
+
+        .divider hr {
+            flex: 1;
+            border-color: var(--border);
+        }
+
+        .divider span {
+            font-size: .73rem;
+        }
+
+        /* THERMO */
+        .thermo-track {
+            position: relative;
+            height: 32px;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .thermo-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #1a6fa8, #c0392b);
+            transition: width 0.1s linear;
+        }
+    </style>
 </head>
 
 <body>
 
-  <!-- HOME -->
-  <div id="screen-home" class="screen active">
-    <div class="logo">🌡️ Le Thermomètre</div>
-    <p style="color:var(--muted);font-size:.88rem;text-align:center;">Le jeu qui chauffe les soirées entre amis 🔥❄️</p>
-    <div class="card" style="width:100%;max-width:370px;display:flex;flex-direction:column;gap:.85rem;">
-      <div>
-        <label style="font-weight:700;font-size:.83rem;display:block;margin-bottom:.28rem;text-align:left;">Ton
-          pseudo</label>
-        <input class="input" id="home-name" placeholder="Ex : Sophie 🌶️" maxlength="20" />
-      </div>
-
-      <div>
-        <label style="font-weight:700;font-size:.83rem;display:block;margin-bottom:.28rem;text-align:left;">Je
-          suis...</label>
-        <div style="display:flex; gap:0.5rem;">
-          <button class="btn btn-ghost" id="btn-sex-m"
-            style="flex:1; padding:0.6rem; font-size:1.2rem; border:2px solid transparent;" onclick="selectSex('m')">👦
-            Garçon</button>
-          <button class="btn btn-ghost" id="btn-sex-f"
-            style="flex:1; padding:0.6rem; font-size:1.2rem; border:2px solid transparent;" onclick="selectSex('f')">👧
-            Fille</button>
+    <!-- HOME -->
+    <div id="screen-home" class="screen active">
+        <div class="logo">🌡️ Le <span>Thermomètre</span></div>
+        <p style="color:var(--muted);font-size:.85rem;text-align:center;">Le jeu qui chauffe les soirées entre amis</p>
+        <div class="card" style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:.85rem;">
+            <div>
+                <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.3rem;color:var(--muted);">TON
+                    PSEUDO</label>
+                <input class="input" id="home-name" placeholder="Ex : Sophie" maxlength="20" />
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.3rem;color:var(--muted);">JE
+                    SUIS...</label>
+                <div style="display:flex;gap:.5rem;">
+                    <button class="sex-btn" id="btn-sex-m" onclick="selectSex('m')">👦 Garçon</button>
+                    <button class="sex-btn" id="btn-sex-f" onclick="selectSex('f')">👧 Fille</button>
+                </div>
+            </div>
+            <button class="btn btn-hot" id="btn-create" style="width:100%;">🔥 Créer une partie</button>
+            <div class="divider">
+                <hr /><span>ou rejoindre</span>
+                <hr />
+            </div>
+            <div style="display:flex;gap:.4rem;">
+                <input class="input" id="home-code" placeholder="Code 6 chiffres" maxlength="6" inputmode="numeric"
+                    style="flex:1;" />
+                <button class="btn btn-cold" id="btn-join">❄️ Go</button>
+            </div>
         </div>
-      </div>
-      <button class="btn btn-hot" id="btn-create">🔥 Créer une partie</button>
-      <div style="display:flex;align-items:center;gap:.45rem;color:var(--muted);">
-        <hr style="flex:1;border-color:rgba(255,255,255,.1)" /><span style="font-size:.76rem;">ou</span>
-        <hr style="flex:1;border-color:rgba(255,255,255,.1)" />
-      </div>
-      <div style="display:flex;gap:.38rem;">
-        <input class="input" id="home-code" placeholder="Code 6 chiffres" maxlength="6" inputmode="numeric"
-          style="flex:1;" />
-        <button class="btn btn-cold" id="btn-join">❄️ Rejoindre</button>
-      </div>
-    </div>
-    <div class="card" style="width:100%;max-width:370px;">
-      <p style="font-family:'Outfit', sans-serif;color:#ff8c00;margin-bottom:.45rem;font-size:.9rem;">📜 Règles
-        rapides</p>
-      <ul style="list-style:none;display:flex;flex-direction:column;gap:.28rem;font-size:.78rem;color:var(--muted);">
-        <li>🎲 Lance le dé, avance sur le plateau</li>
-        <li>Case ROUGE = Question HOT 🔥 · Case BLEUE = Question Froid ❄️</li>
-        <li>Case BARRÉE ✕ = <b style="color:var(--hot)">Action Extrême !</b></li>
-        <li>Case <b style="color:var(--text)">G</b> = <b style="color:var(--text)">Gage !</b> · <b
-            style="color:var(--hot)">GH</b> = <b style="color:var(--hot)">Gage Hot 🔥</b> · <b
-            style="color:var(--text)">GF</b> = <b style="color:#00ccdd">Gage Froid ❄️</b></li>
-        <li>🤡 1 <b style="color:var(--joker)">Joker</b> chacun · 🏆 Premier à FINISH gagne !</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- ADMIN TINDER -->
-  <div id="screen-admin" class="screen">
-    <div class="logo" style="font-size:1.55rem;">🛠️ Admin Tinder</div>
-    <div class="card"
-      style="width:100%;max-width:370px;text-align:center;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
-      <div id="admin-counter" style="color:var(--muted);font-size:0.8rem;font-weight:700;">Chargement...</div>
-
-      <div id="admin-card-text"
-        style="font-size:1.1rem;font-weight:700;line-height:1.5;min-height:100px;color:white;background:rgba(255,255,255,0.05);padding:1rem;border-radius:0.8rem;">
-        Patientez...
-      </div>
-
-      <div style="display:flex;gap:1rem;justify-content:center;margin-top:0.5rem;" id="admin-actions">
-        <button class="btn btn-cold" id="btn-admin-remove" style="flex:1;">❌ Retirer</button>
-        <button class="btn btn-hot" id="btn-admin-keep" style="flex:1;">✅ Garder</button>
-      </div>
-
-      <div style="text-align:left;margin-top:1rem;">
-        <label style="font-weight:700;font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.2rem;">Rendu
-          JSON Final :</label>
-        <textarea id="admin-export" class="input"
-          style="height:100px;font-size:0.65rem;border-color:rgba(255,255,255,0.1);" readonly></textarea>
-      </div>
-
-      <button class="btn btn-ghost" onclick="copyAdminJson()" style="width:100%;margin-top:0.5rem;">📋 Copier JSON
-        final</button>
-      <button class="btn btn-ghost" onclick="showScreen('home')" style="width:100%;font-size:0.8rem;opacity:0.6;">⏪
-        Quitter Admin</button>
-    </div>
-  </div>
-
-  <!-- LOBBY -->
-  <div id="screen-lobby" class="screen">
-    <div class="logo" style="font-size:1.55rem;">🌡️ Lobby</div>
-    <div class="card"
-      style="text-align:center;width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:0.8rem;">
-      <p style="color:var(--muted);font-size:.78rem;">Code de la partie</p>
-      <p id="lobby-code"
-        style="font-family:'Outfit', sans-serif;font-size:2.5rem;color:#ff8c00;letter-spacing:.3em;margin:0;">
-      </p>
-      <img id="lobby-qr" src=""
-        style="width:160px;height:160px;border-radius:0.5rem;display:none;border:4px solid white;" alt="QR Code">
-      <p style="font-size:.73rem;color:var(--muted);">Partage ce code ou fais scanner le QR !</p>
-    </div>
-    <div id="lobby-players"></div>
-    <div style="display:flex;gap:.55rem;flex-wrap:wrap;justify-content:center;">
-      <button class="btn btn-ghost" id="btn-ready">✅ Prêt</button>
-      <button class="btn btn-hot" id="btn-start">🚀 Lancer</button>
-    </div>
-    <p id="lobby-msg" style="color:var(--muted);font-size:.78rem;text-align:center;"></p>
-
-    <!-- THERMOMETER HOST -->
-    <div id="lobby-thermo-wrapper" style="display:none; width:100%; max-width:360px; margin-top:1rem; cursor:pointer;"
-      onclick="triggerThermo()">
-      <div
-        style="display:flex; justify-content:space-between; color:var(--text); font-size:0.85rem; font-weight:800; margin-bottom:0.5rem;">
-        <span>Chauffe la salle ! 🔥</span>
-        <span id="thermo-val">0.0°</span>
-      </div>
-      <div class="thermo-track"
-        style="position:relative; height:36px; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.1); border-radius:999px; overflow:hidden; box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);">
-        <div id="thermo-fill"
-          style="position:absolute; top:0; left:0; height:100%; width:0%; background:linear-gradient(90deg, #00d2ff, #a855f7, #ff3333); transition: box-shadow 0.2s; box-shadow:0 0 16px rgba(0,210,255,0.5);">
+        <div class="card" style="width:100%;max-width:360px;">
+            <p style="font-family:'Playfair Display',serif;color:var(--hot);margin-bottom:.45rem;font-size:.9rem;">📜
+                Règles rapides</p>
+            <ul
+                style="list-style:none;display:flex;flex-direction:column;gap:.3rem;font-size:.76rem;color:var(--muted);">
+                <li>🎲 Lance le dé, avance sur le plateau</li>
+                <li>🔴 Rouge = Question HOT · 🔵 Bleu = Question Froid</li>
+                <li>✕ Barré = Action Extrême !</li>
+                <li><b style="color:var(--text)">G</b> = Gage · <b style="color:var(--hot)">GH</b> = Gage Hot 🔥 · <b
+                        style="color:#4e9fdd">GF</b> = Gage Froid ❄️</li>
+                <li>🃏 1 Joker chacun · 🏆 Premier à FINISH gagne !</li>
+            </ul>
         </div>
-      </div>
-      <div
-        style="display:flex; justify-content:space-between; color:var(--muted); font-size:0.65rem; font-weight:800; margin-top:0.4rem; padding:0 0.5rem;">
-        <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
-      </div>
     </div>
-  </div>
 
-  <!-- GAME -->
-  <div id="screen-game" class="screen">
-    <div id="game-topbar">
-      <span style="font-family:'Outfit', sans-serif;font-size:.78rem;color:#ff8c00;flex-shrink:0;">🌡️</span>
-      <div id="tb-players" style="display:flex;gap:.32rem;"></div>
-      <div style="margin-left:auto;font-size:.68rem;color:var(--muted);flex-shrink:0;" id="tb-turn"></div>
-    </div>
-    <div id="game-main">
-      <!-- BOARD (user's HTML style, gradient fort) -->
-      <div id="game-board-col">
-        <div class="stage" id="board-stage">
-          <svg viewBox="0 0 1000 700" preserveAspectRatio="none" aria-label="Plateau">
-            <path id="snake-path"
-              d="M 707.96 151.74 L 707.96 215.08 L 741.19 232.26 L 736.66 340.70 L 710.98 373.98 L 721.55 472.75 L 649.80 366.46 L 618.83 354.65 L 584.84 294.53 L 602.97 251.58 L 617.32 159.25 L 550.86 129.19 L 517.62 159.25 L 511.58 202.20 L 471.55 142.08 L 436.81 125.97 L 410.37 186.09 L 440.58 230.11 L 501.76 294.53 L 492.70 376.12 L 446.63 416.92 L 411.88 475.97 L 372.61 423.36 L 325.78 389.01 L 374.12 331.03 L 348.44 250.51 L 311.43 204.35 L 244.96 163.55 L 173.21 172.14 L 146.02 231.19 L 204.93 269.84 L 153.58 328.89 L 220.80 383.64 L 146.02 431.95" />
-          </svg>
-          <!-- cells and tokens injected by JS -->
+    <!-- ADMIN -->
+    <div id="screen-admin" class="screen">
+        <div class="logo" style="font-size:1.4rem;">🛠️ Admin Tinder</div>
+        <div class="card"
+            style="width:100%;max-width:360px;text-align:center;display:flex;flex-direction:column;gap:1rem;">
+            <div id="admin-counter" style="color:var(--muted);font-size:0.78rem;font-weight:600;">Chargement...</div>
+            <div id="admin-card-text"
+                style="font-size:1rem;font-weight:600;line-height:1.55;min-height:100px;color:var(--text);background:var(--surface2);padding:1rem;border-radius:0.75rem;border:1px solid var(--border);">
+                Patientez...</div>
+            <div style="display:flex;gap:.8rem;justify-content:center;" id="admin-actions">
+                <button class="btn btn-cold" id="btn-admin-remove" style="flex:1;">❌ Retirer</button>
+                <button class="btn btn-hot" id="btn-admin-keep" style="flex:1;">✅ Garder</button>
+            </div>
+            <div>
+                <label
+                    style="font-weight:600;font-size:0.72rem;color:var(--muted);display:block;margin-bottom:0.2rem;">JSON
+                    Final :</label>
+                <textarea id="admin-export" class="input" style="height:90px;font-size:0.62rem;" readonly></textarea>
+            </div>
+            <button class="btn btn-ghost" onclick="copyAdminJson()" style="width:100%;">📋 Copier JSON</button>
+            <button class="btn btn-ghost" onclick="showScreen('home')"
+                style="width:100%;font-size:0.78rem;opacity:0.55;">⏪ Quitter</button>
         </div>
-      </div>
-
-      <!-- Desktop side panel -->
-      <div id="game-side">
-        <div class="side-title">Joueurs</div>
-        <div id="side-players" style="display:flex;flex-direction:column;gap:.32rem;"></div>
-        <hr style="border-color:rgba(255,255,255,.07)" />
-        <div style="text-align:center;">
-          <div style="font-size:.7rem;color:var(--muted);">Tour de</div>
-          <div id="cur-player-name" class="cur-name" style="margin-top:.12rem;"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:.45rem;">
-          <div id="dice-el">🎲</div>
-          <button class="btn btn-hot btn-sm" id="btn-roll" style="width:100%;">🎲 Lancer le dé</button>
-          <button class="btn btn-ghost btn-sm" id="btn-end-turn" style="width:100%;display:none;">➡️ Fin de
-            tour</button>
-        </div>
-        <hr style="border-color:rgba(255,255,255,.07)" />
-        <div style="text-align:center;">
-          <button class="btn btn-joker btn-sm" id="btn-joker" style="width:100%;">🤡 Mon Joker</button>
-          <p id="joker-status" style="font-size:.66rem;color:var(--muted);margin-top:.28rem;"></p>
-        </div>
-      </div>
     </div>
 
-    <!-- Mobile bottom bar -->
-    <div id="game-bottombar">
-      <div style="display:flex;align-items:center;gap:.38rem;">
-        <div id="dice-mob">🎲</div>
-        <div style="display:flex;flex-direction:column;gap:.22rem;">
-          <button class="btn btn-hot btn-sm" id="btn-roll-mob">🎲 Lancer</button>
-          <button class="btn btn-ghost btn-sm" id="btn-end-turn-mob" style="display:none;">➡️ Fin</button>
+    <!-- LOBBY -->
+    <div id="screen-lobby" class="screen">
+        <div class="logo" style="font-size:1.5rem;">🌡️ Salon d'attente</div>
+        <div class="card"
+            style="text-align:center;width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+            <p style="color:var(--muted);font-size:.76rem;">CODE DE LA PARTIE</p>
+            <p id="lobby-code"
+                style="font-family:'Playfair Display',serif;font-size:2.4rem;color:var(--hot);letter-spacing:.3em;margin:0;">
+            </p>
+            <img id="lobby-qr" src=""
+                style="width:148px;height:148px;border-radius:.5rem;display:none;border:3px solid var(--border);"
+                alt="QR Code" />
+            <p style="font-size:.7rem;color:var(--muted);">Partage ce code ou fais scanner le QR !</p>
         </div>
-      </div>
-      <div style="text-align:center;flex:1;padding:0 .38rem;">
-        <div style="font-size:.66rem;color:var(--muted);">Tour de</div>
-        <div id="mob-cur" style="font-family:'Outfit', sans-serif;font-size:.92rem;"></div>
-      </div>
-      <button class="btn btn-joker btn-sm" id="btn-joker-mob">🤡</button>
+        <div id="lobby-players"></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;">
+            <button class="btn btn-ghost" id="btn-ready">✅ Prêt</button>
+            <button class="btn btn-hot" id="btn-start">🚀 Lancer</button>
+        </div>
+        <p id="lobby-msg" style="color:var(--muted);font-size:.76rem;text-align:center;"></p>
+        <div id="lobby-thermo-wrapper" style="display:none;width:100%;max-width:340px;cursor:pointer;"
+            onclick="triggerThermo()">
+            <div
+                style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:700;margin-bottom:.45rem;">
+                <span>Chauffe la salle ! 🔥</span><span id="thermo-val">0.0°</span>
+            </div>
+            <div class="thermo-track">
+                <div id="thermo-fill" class="thermo-fill"></div>
+            </div>
+            <div
+                style="display:flex;justify-content:space-between;color:var(--muted);font-size:.62rem;font-weight:700;margin-top:.35rem;padding:0 .45rem;">
+                <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- FINISH -->
-  <div id="screen-finish" class="screen">
-    <canvas id="confetti-canvas"></canvas>
-    <div class="trophy-anim">🏆</div>
-    <div class="finish-title">
-      <span id="winner-name"
-        style="background:linear-gradient(90deg,var(--hot),#ff8c00,var(--cold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></span><br />gagne
-      la partie !
+    <!-- GAME -->
+    <div id="screen-game" class="screen">
+        <div id="game-topbar">
+            <span
+                style="font-family:'Playfair Display',serif;font-size:.76rem;color:var(--hot);flex-shrink:0;">🌡️</span>
+            <div id="tb-players" style="display:flex;gap:.28rem;"></div>
+            <div style="margin-left:auto;font-size:.66rem;color:var(--muted);flex-shrink:0;" id="tb-turn"></div>
+        </div>
+        <div id="game-main">
+            <div id="game-board-col">
+                <div class="stage" id="board-stage">
+                    <svg viewBox="0 0 1000 700" preserveAspectRatio="none">
+                        <path id="snake-path"
+                            d="M 80 80 C 80 160, 920 60, 920 220 C 920 380, 80 200, 80 400 C 80 600, 920 380, 920 540 C 920 660, 80 520, 80 660" />
+                    </svg>
+                </div>
+            </div>
+            <div id="game-side">
+                <div class="side-title">Joueurs</div>
+                <div id="side-players" style="display:flex;flex-direction:column;gap:.28rem;"></div>
+                <hr style="border-color:var(--border)" />
+                <div style="text-align:center;">
+                    <div style="font-size:.68rem;color:var(--muted);">Tour de</div>
+                    <div id="cur-player-name" class="cur-name" style="margin-top:.1rem;"></div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;">
+                    <div id="dice-el">🎲</div>
+                    <button class="btn btn-hot btn-sm" id="btn-roll" style="width:100%;">🎲 Lancer le dé</button>
+                    <button class="btn btn-ghost btn-sm" id="btn-end-turn" style="width:100%;display:none;">➡️ Fin de
+                        tour</button>
+                </div>
+                <hr style="border-color:var(--border)" />
+                <div style="text-align:center;">
+                    <button class="btn btn-joker btn-sm" id="btn-joker" style="width:100%;">🃏 Mon Joker</button>
+                    <p id="joker-status" style="font-size:.63rem;color:var(--muted);margin-top:.25rem;"></p>
+                </div>
+            </div>
+        </div>
+        <div id="game-bottombar">
+            <div style="display:flex;align-items:center;gap:.35rem;">
+                <div id="dice-mob">🎲</div>
+                <div style="display:flex;flex-direction:column;gap:.2rem;">
+                    <button class="btn btn-hot btn-sm" id="btn-roll-mob">🎲 Lancer</button>
+                    <button class="btn btn-ghost btn-sm" id="btn-end-turn-mob" style="display:none;">➡️ Fin</button>
+                </div>
+            </div>
+            <div style="text-align:center;flex:1;padding:0 .35rem;">
+                <div style="font-size:.63rem;color:var(--muted);">Tour de</div>
+                <div id="mob-cur" style="font-family:'Playfair Display',serif;font-size:.9rem;"></div>
+            </div>
+            <button class="btn btn-joker btn-sm" id="btn-joker-mob">🃏</button>
+        </div>
     </div>
-    <p style="color:var(--muted);font-size:.92rem;">Bravo ! 🎉🔥</p>
-    <button class="btn btn-hot" id="btn-replay" style="margin-top:.5rem;">🏠 Rejouer</button>
-  </div>
 
-  <!-- Modal -->
-  <div id="modal-overlay">
-    <div id="modal-box">
-      <div class="modal-icon" id="modal-icon"></div>
-      <div class="modal-title" id="modal-title"></div>
-      <div class="modal-desc" id="modal-desc"></div>
-      <div id="modal-actions" style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;"></div>
+    <!-- FINISH -->
+    <div id="screen-finish" class="screen">
+        <canvas id="confetti-canvas"></canvas>
+        <div class="trophy-anim">🏆</div>
+        <div class="finish-title">
+            <span id="winner-name" style="color:var(--hot);"></span><br />gagne la partie !
+        </div>
+        <p style="color:var(--muted);font-size:.9rem;">Bravo ! 🎉🔥</p>
+        <button class="btn btn-hot" id="btn-replay" style="margin-top:.5rem;">🏠 Rejouer</button>
     </div>
-  </div>
-  <div id="toast-container"></div>
 
-  <script>
-    const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-    function $(i) { return document.getElementById(i); }
-    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
-    function toast(m, d = 2800) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = m; $('toast-container').appendChild(el); setTimeout(() => el.remove(), d); }
-    function showScreen(n) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $('screen-' + n).classList.add('active'); }
+    <!-- MODAL -->
+    <div id="modal-overlay">
+        <div id="modal-box">
+            <div class="modal-icon" id="modal-icon"></div>
+            <div class="modal-title" id="modal-title"></div>
+            <div class="modal-desc" id="modal-desc"></div>
+            <div id="modal-actions" style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;"></div>
+        </div>
+    </div>
+    <div id="toast-container"></div>
 
-    // ── MODAL ──
-    function openModal(icon, title, desc, cls, actions) {
-      const box = $('modal-box'); box.className = ''; if (cls) box.classList.add(cls);
-      $('modal-icon').textContent = icon; $('modal-title').textContent = title; $('modal-desc').innerHTML = desc;
-      const act = $('modal-actions'); act.innerHTML = '';
-      (actions || []).forEach(a => { const b = document.createElement('button'); b.className = 'btn ' + (a.cls || 'btn-ghost'); b.textContent = a.label; b.onclick = () => { a.fn?.(); closeModal(); }; act.appendChild(b); });
-      $('modal-overlay').classList.add('open');
-    }
-    function closeModal() { $('modal-overlay').classList.remove('open'); }
-    $('modal-overlay').addEventListener('click', e => { if (e.target === $('modal-overlay')) closeModal(); });
+    <script>
+        const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        function $(i) { return document.getElementById(i); }
+        function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+        function toast(m, d = 2800) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = m; $('toast-container').appendChild(el); setTimeout(() => el.remove(), d); }
+        function showScreen(n) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); $('screen-' + n).classList.add('active'); }
 
-    // ── BOARD ──
-    const SOFF = 8;
-    // Chemins parfaitement arrondis (Bézier) pour un vrai effet "Serpent" très smooth 🐍
-    // Les boucles sont plus grandes et s'étirent plus à gauche pour garder 60% de cases HOT.
-    const L_PATH = 'M 80 80 C 80 160, 920 60, 920 220 C 920 380, 80 200, 80 400 C 80 600, 920 380, 920 540 C 920 660, 80 520, 80 660';
-    const P_PATH = 'M 100 40 C 100 120, 600 60, 600 180 C 600 340, 100 240, 100 420 C 100 520, 600 440, 600 540 C 600 680, 100 580, 100 760 C 100 860, 600 780, 600 880 C 600 980, 100 920, 100 960';
-    let boardReady = false, boardKey = null, currentBoard = null;
-    const squareHotness = [];
+        function openModal(icon, title, desc, cls, actions) {
+            const box = $('modal-box'); box.className = ''; if (cls) box.classList.add(cls);
+            $('modal-icon').textContent = icon; $('modal-title').textContent = title; $('modal-desc').innerHTML = desc;
+            const act = $('modal-actions'); act.innerHTML = '';
+            (actions || []).forEach(a => { const b = document.createElement('button'); b.className = 'btn ' + (a.cls || 'btn-ghost'); b.textContent = a.label; b.onclick = () => { a.fn?.(); closeModal(); }; act.appendChild(b); });
+            $('modal-overlay').classList.add('open');
+        }
+        function closeModal() { $('modal-overlay').classList.remove('open'); }
+        $('modal-overlay').addEventListener('click', e => { if (e.target === $('modal-overlay')) closeModal(); });
 
-    function getCfg() {
-      const p = window.innerWidth <= 600;
-      return p ? { vbw: 700, vbh: 1000, d: P_PATH, key: 'p' }
-        : { vbw: 1000, vbh: 700, d: L_PATH, key: 'l' };
-    }
+        const SOFF = 8;
+        const L_PATH = 'M 80 80 C 80 160, 920 60, 920 220 C 920 380, 80 200, 80 400 C 80 600, 920 380, 920 540 C 920 660, 80 520, 80 660';
+        const P_PATH = 'M 100 40 C 100 120, 600 60, 600 180 C 600 340, 100 240, 100 420 C 100 520, 600 440, 600 540 C 600 680, 100 580, 100 760 C 100 860, 600 780, 600 880 C 600 980, 100 920, 100 960';
+        let boardReady = false, boardKey = null, currentBoard = null;
+        const squareHotness = [];
 
-    function initBoard(board) {
-      currentBoard = board;
-      const cfg = getCfg();
-      if (boardReady && boardKey === cfg.key) return;
-      boardReady = true; boardKey = cfg.key;
-      document.querySelectorAll('.cell').forEach(c => c.remove());
-      const stage = $('board-stage');
-      stage.querySelector('svg').setAttribute('viewBox', '0 0 ' + cfg.vbw + ' ' + cfg.vbh);
-      const pathEl = $('snake-path');
-      pathEl.setAttribute('d', cfg.d);
-      const cellSz = Math.round(Math.max(28, Math.min(54, Math.min(stage.offsetWidth || 300, stage.offsetHeight || 300) / 8)));
-      stage.style.setProperty('--cellW', cellSz + 'px');
-      stage.style.setProperty('--cellH', cellSz + 'px');
-      const L = pathEl.getTotalLength(), N = board.length;
-      board.forEach((sq, i) => {
-        const t = (i + 0.5) / N;
-        const p = pathEl.getPointAtLength(SOFF + t * (L - 2 * SOFF));
-        const lp = (p.x / cfg.vbw * 100).toFixed(3), tp = (p.y / cfg.vbh * 100).toFixed(3);
-        const xr = parseFloat(lp) / 100;
-        // Pousse le rouge un petit peu plus loin (le centre 0.5 devient plus rouge)
-        const adjustedXr = Math.max(0, Math.min(1, xr * 1.1 - 0.05));
-        const cr = Math.round(220 - adjustedXr * 220), cb = Math.round(adjustedXr * 240);
+        function getCfg() { const p = window.innerWidth <= 600; return p ? { vbw: 700, vbh: 1000, d: P_PATH, key: 'p' } : { vbw: 1000, vbh: 700, d: L_PATH, key: 'l' }; }
 
-        // Dynamically compute hotness strictly based on color (red dominates blue)
-        const isHot = cr >= cb;
-        squareHotness[i] = isHot;
+        function initBoard(board) {
+            currentBoard = board;
+            const cfg = getCfg();
+            if (boardReady && boardKey === cfg.key) return;
+            boardReady = true; boardKey = cfg.key;
+            document.querySelectorAll('.cell').forEach(c => c.remove());
+            const stage = $('board-stage');
+            stage.querySelector('svg').setAttribute('viewBox', '0 0 ' + cfg.vbw + ' ' + cfg.vbh);
+            const pathEl = $('snake-path'); pathEl.setAttribute('d', cfg.d);
+            const cellSz = Math.round(Math.max(28, Math.min(52, Math.min(stage.offsetWidth || 300, stage.offsetHeight || 300) / 8)));
+            stage.style.setProperty('--cellW', cellSz + 'px'); stage.style.setProperty('--cellH', cellSz + 'px');
+            const L = pathEl.getTotalLength(), N = board.length;
+            board.forEach((sq, i) => {
+                const t = (i + 0.5) / N;
+                const p = pathEl.getPointAtLength(SOFF + t * (L - 2 * SOFF));
+                const lp = (p.x / cfg.vbw * 100).toFixed(3), tp = (p.y / cfg.vbh * 100).toFixed(3);
+                const xr = parseFloat(lp) / 100;
+                const axr = Math.max(0, Math.min(1, xr * 1.1 - 0.05));
+                const cr = Math.round(180 - axr * 180), cb = Math.round(axr * 160);
+                squareHotness[i] = (cr >= cb);
+                const isBarred = sq.barred === true;
+                const div = document.createElement('div');
+                div.className = 'cell' + (isBarred ? ' barred' : '') + (sq.type === 'start' ? ' is-start' : sq.type === 'finish' ? ' is-finish' : '');
+                div.id = 'cell-' + i;
+                div.style.background = 'rgba(' + cr + ',0,' + cb + ',0.7)';
+                div.style.left = 'calc(' + lp + '% - (var(--cellW)/2))';
+                div.style.top = 'calc(' + tp + '% - (var(--cellH)/2))';
+                const rot = (Math.random() - 0.5) * 14;
+                div.style.transform = 'rotate(' + rot + 'deg)';
+                let lbl = '';
+                if (sq.type === 'start') lbl = '▶';
+                else if (sq.type === 'finish') lbl = '🏆';
+                else if (['G', 'GH', 'GF'].includes(sq.type)) lbl = sq.type;
+                div.innerHTML = '<div class="txt">' + lbl + '</div>' + (isBarred ? '<div class="x1"></div><div class="x2"></div>' : '');
+                stage.appendChild(div);
+            });
+        }
 
-        const isBarred = sq.barred === true;
+        function updateTokens(players, board) {
+            document.querySelectorAll('.player-token').forEach(t => t.remove());
+            const cfg = getCfg();
+            const pathEl = $('snake-path');
+            const L = pathEl.getTotalLength(), N = board.length;
+            const byPos = {};
+            players.forEach(p => { (byPos[p.position] = byPos[p.position] || []).push(p); });
+            Object.entries(byPos).forEach(([pos, grp]) => {
+                const i = parseInt(pos);
+                const t = (i + 0.5) / N;
+                const pt = pathEl.getPointAtLength(SOFF + t * (L - 2 * SOFF));
+                const lp = pt.x / cfg.vbw * 100, tp2 = pt.y / cfg.vbh * 100;
+                const n = grp.length;
+                grp.forEach((pl, gi) => {
+                    const off = n > 1 ? (gi - (n - 1) / 2) * 13 : 0;
+                    const tok = document.createElement('div');
+                    tok.className = 'player-token';
+                    tok.style.cssText = 'left:calc(' + lp + '% + ' + off + 'px);top:' + tp2 + '%;background:' + pl.color + ';';
+                    tok.textContent = pl.name[0].toUpperCase();
+                    $('board-stage').appendChild(tok);
+                });
+            });
+        }
 
-        const div = document.createElement('div');
-        div.className = 'cell' + (isBarred ? ' barred' : '') + (sq.type === 'start' ? ' is-start' : sq.type === 'finish' ? ' is-finish' : '');
-        div.id = 'cell-' + i;
-        div.style.background = 'rgba(' + cr + ',0,' + cb + ',0.72)';
-        div.style.left = 'calc(' + lp + '% - (var(--cellW)/2))';
-        div.style.top = 'calc(' + tp + '% - (var(--cellH)/2))';
+        let _rsz;
+        window.addEventListener('resize', () => { clearTimeout(_rsz); _rsz = setTimeout(() => { if (currentBoard && currentState?.phase === 'playing') { boardReady = false; initBoard(currentBoard); if (currentState?.players) updateTokens(currentState.players, currentBoard); } }, 200); });
 
-        // Effet random : légère rotation organique
-        const rot = (Math.random() - 0.5) * 16;
-        div.style.transform = 'rotate(' + rot + 'deg)';
-
-        let lbl = '';
-        if (sq.type === 'start') lbl = '▶';
-        else if (sq.type === 'finish') lbl = '🏆';
-        else if (['G', 'GH', 'GF'].includes(sq.type)) lbl = sq.type;
-        div.innerHTML = '<div class="txt">' + lbl + '</div>' + (isBarred ? '<div class="x1"></div><div class="x2"></div>' : '');
-        stage.appendChild(div);
-      });
-    }
-
-    function updateTokens(players, board) {
-      document.querySelectorAll('.player-token').forEach(t => t.remove());
-      const cfg = getCfg();
-      const pathEl = $('snake-path');
-      const L = pathEl.getTotalLength(), N = board.length;
-      const byPos = {};
-      players.forEach(p => { (byPos[p.position] = byPos[p.position] || []).push(p); });
-      Object.entries(byPos).forEach(([pos, grp]) => {
-        const i = parseInt(pos);
-        const t = (i + 0.5) / N;
-        const pt = pathEl.getPointAtLength(SOFF + t * (L - 2 * SOFF));
-        const lp = pt.x / cfg.vbw * 100, tp = pt.y / cfg.vbh * 100;
-        const n = grp.length;
-        grp.forEach((pl, gi) => {
-          const off = n > 1 ? (gi - (n - 1) / 2) * 14 : 0;
-          const tok = document.createElement('div');
-          tok.className = 'player-token';
-          tok.style.cssText = 'left:calc(' + lp + '% + ' + off + 'px);top:' + tp + '%;background:' + pl.color + ';';
-          tok.textContent = pl.name[0].toUpperCase();
-          $('board-stage').appendChild(tok);
+        const socket = io();
+        let myId = null, myGameCode = null, currentState = null;
+        socket.on('connect', () => { myId = socket.id; });
+        socket.on('game_state', state => {
+            currentState = state;
+            if (state.phase === 'lobby') { renderLobby(state); }
+            else if (state.phase === 'playing') { if (!$('screen-game').classList.contains('active')) showScreen('game'); initBoard(state.board); renderGame(state); }
         });
-      });
-    }
+        socket.on('game_finished', ({ winner }) => { $('winner-name').textContent = winner; showScreen('finish'); startConfetti(); });
+        socket.on('joker_used', ({ playerName, playerId }) => {
+            toast('🃏 ' + playerName + ' veut utiliser son Joker !');
+            if (playerId !== myId) { openModal('🃏', 'Vote Joker !', playerName + ' veut refuser son gage.\nTu acceptes ?', 'modal-joker', [{ label: '✅ Accepter', cls: 'btn-cold', fn: () => socket.emit('vote_joker', { accept: true }) }, { label: '❌ Rejeter', cls: 'btn-hot', fn: () => socket.emit('vote_joker', { accept: false }) }]); }
+            else { toast('⏳ En attente du vote des autres...', 4000); }
+        });
+        socket.on('joker_vote', ({ accept, voterName }) => { toast(accept ? '✅ ' + voterName + ' a accepté !' : '❌ ' + voterName + ' a rejeté !'); });
+        socket.on('joker_vote_result', ({ passed }) => { if (passed) toast('✅ Joker validé !', 5000); else toast('❌ Joker refusé !', 5000); });
 
-    // Re-render on orientation change
-    let _rsz;
-    window.addEventListener('resize', () => {
-      clearTimeout(_rsz);
-      _rsz = setTimeout(() => {
-        if (currentBoard && currentState?.phase === 'playing') {
-          boardReady = false;
-          initBoard(currentBoard);
-          if (currentState?.players) updateTokens(currentState.players, currentBoard);
+        function renderLobby(state) {
+            $('lobby-code').textContent = state.code;
+            const c = $('lobby-players'); c.innerHTML = '';
+            state.players.forEach(p => { const ch = document.createElement('div'); ch.className = 'player-chip' + (p.ready ? ' ready' : ''); ch.innerHTML = '<canvas class="player-avatar" width="22" height="22"></canvas><span>' + esc(p.name) + '</span>' + (p.ready ? '<span style="font-size:.58rem;color:#27ae60">✅</span>' : ''); drawAv(ch.querySelector('.player-avatar'), p.color, p.name[0]); c.appendChild(ch); });
+            const isHost = state.players[0]?.id === myId;
+            $('btn-start').style.display = isHost ? '' : 'none';
+            $('lobby-msg').textContent = isHost ? (state.players.every(p => p.ready) ? '🚀 Tout le monde est prêt !' : 'En attente…') : 'En attente du lancement…';
+            if (state.qrUrl) { $('lobby-qr').src = state.qrUrl; $('lobby-qr').style.display = 'block'; } else { $('lobby-qr').style.display = 'none'; }
+            $('lobby-thermo-wrapper').style.display = isHost ? 'block' : 'none';
         }
-      }, 200);
-    });
+        function drawAv(cv, color, init) { const c = cv.getContext('2d'); c.fillStyle = color; c.beginPath(); c.arc(11, 11, 9, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 8px DM Sans,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(init.toUpperCase(), 11, 11); }
 
-    // ── SOCKET ──
-    const socket = io();
-    let myId = null, myGameCode = null, currentState = null;
-    socket.on('connect', () => { myId = socket.id; });
-    socket.on('game_state', state => {
-      currentState = state;
-      if (state.phase === 'lobby') { renderLobby(state); }
-      else if (state.phase === 'playing') {
-        if (!$('screen-game').classList.contains('active')) showScreen('game');
-        initBoard(state.board); renderGame(state);
-      }
-    });
-    socket.on('game_finished', ({ winner }) => { $('winner-name').textContent = winner; showScreen('finish'); startConfetti(); });
-    socket.on('joker_used', ({ playerName, playerId }) => {
-      toast('🤡 ' + playerName + ' veut utiliser son Joker !');
-      if (playerId !== myId) {
-        openModal('🤡', 'Vote Joker !', playerName + ' veut refuser son gage.\nTu acceptes ?', 'modal-joker', [{ label: '✅ Accepter', cls: 'btn-cold', fn: () => socket.emit('vote_joker', { accept: true }) }, { label: '❌ Rejeter', cls: 'btn-hot', fn: () => socket.emit('vote_joker', { accept: false }) }]);
-      } else {
-        toast('⏳ En attente du vote des autres...', 4000);
-      }
-    });
-
-    socket.on('joker_vote', ({ accept, voterName }) => {
-      toast(accept ? '✅ ' + voterName + ' a accepté !' : '❌ ' + voterName + ' a rejeté !');
-    });
-
-    socket.on('joker_vote_result', ({ passed }) => {
-      if (passed) toast('✅ MAJORITÉ POUR : Joker validé !', 5000);
-      else toast('❌ MAJORITÉ CONTRE : Joker rendu au joueur !', 5000);
-    });
-
-    // ── RENDER ──
-    function renderLobby(state) {
-      $('lobby-code').textContent = state.code;
-      const c = $('lobby-players'); c.innerHTML = '';
-      state.players.forEach(p => { const ch = document.createElement('div'); ch.className = 'player-chip' + (p.ready ? ' ready' : ''); ch.innerHTML = '<canvas class="player-avatar" width="24" height="24"></canvas><span>' + esc(p.name) + '</span>' + (p.ready ? '<span style="font-size:.6rem;color:#2ecc71">✅</span>' : ''); drawAv(ch.querySelector('.player-avatar'), p.color, p.name[0]); c.appendChild(ch); });
-      const isHost = state.players[0]?.id === myId;
-      $('btn-start').style.display = isHost ? '' : 'none';
-      $('lobby-msg').textContent = isHost ? (state.players.every(p => p.ready) ? '🚀 Tout le monde est prêt !' : 'En attente…') : 'En attente du lancement…';
-
-      // QR Code Management
-      if (state.qrUrl) {
-        $('lobby-qr').src = state.qrUrl;
-        $('lobby-qr').style.display = 'block';
-      } else {
-        $('lobby-qr').style.display = 'none';
-      }
-
-      // Afficher le faux thermomètre uniquement pour le créateur
-      if (isHost) {
-        $('lobby-thermo-wrapper').style.display = 'block';
-      } else {
-        $('lobby-thermo-wrapper').style.display = 'none';
-      }
-    }
-    function drawAv(cv, color, init) { const c = cv.getContext('2d'); c.fillStyle = color; c.beginPath(); c.arc(12, 12, 10, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 9px Nunito,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(init.toUpperCase(), 12, 12); }
-
-    function renderGame(state) {
-      const cur = state.players[state.currentPlayerIndex];
-      const mob = window.innerWidth <= 600;
-      const isMyTurn = cur?.id === myId;
-      const rolled = state.diceValue != null;
-      // topbar
-      const tbp = $('tb-players'); tbp.innerHTML = '';
-      state.players.forEach((p, i) => { const ch = document.createElement('div'); ch.className = 'tb-chip' + (i === state.currentPlayerIndex ? ' active' : ''); ch.innerHTML = '<div class="tb-dot" style="background:' + p.color + '"></div><span>' + esc(p.name) + '</span><span style="opacity:.5;font-size:.6rem;margin-left:.12rem;">' + p.position + '</span>'; tbp.appendChild(ch); });
-      $('tb-turn').textContent = cur ? cur.name + ' joue' : '';
-      if (mob) {
-        const mc = $('mob-cur'); mc.textContent = cur?.name || '…'; mc.style.color = cur?.color || '#fff';
-        if (rolled) $('dice-mob').textContent = FACES[state.diceValue - 1];
-        setBtns($('btn-roll-mob'), $('btn-end-turn-mob'), isMyTurn, rolled, state.pendingCardDraw);
-        const me = state.players.find(p => p.id === myId);
-        $('btn-joker-mob').disabled = me?.jokerUsed; $('btn-joker-mob').className = 'btn btn-joker btn-sm' + (me?.jokerUsed ? ' btn-disabled' : '');
-      } else {
-        const sp = $('side-players'); sp.innerHTML = '';
-        state.players.forEach((p, i) => { const d = document.createElement('div'); d.className = 'side-player' + (i === state.currentPlayerIndex ? ' active' : ''); d.innerHTML = '<div class="side-dot" style="background:' + p.color + '"></div><span class="side-name">' + esc(p.name) + '</span><span style="font-size:.68rem;color:var(--muted)">' + p.position + '/35</span>' + (p.jokerUsed ? '' : '<span class="joker-badge">🤡</span>'); sp.appendChild(d); });
-        const cn = $('cur-player-name'); cn.textContent = cur?.name || '…'; cn.style.color = cur?.color || '#fff';
-        if (rolled) $('dice-el').textContent = FACES[state.diceValue - 1];
-        setBtns($('btn-roll'), $('btn-end-turn'), isMyTurn, rolled, state.pendingCardDraw);
-        const me = state.players.find(p => p.id === myId);
-        $('btn-joker').disabled = me?.jokerUsed; $('btn-joker').className = 'btn btn-joker btn-sm' + (me?.jokerUsed ? ' btn-disabled' : '');
-        $('joker-status').textContent = me?.jokerUsed ? 'Joker utilisé ❌' : 'Joker disponible ✅';
-      }
-      updateTokens(state.players, state.board);
-
-      // ── LOGIQUE DES CARTES (PIOCHE / RÉVÉLATION) ──
-      const pending = state.pendingCardDraw;
-      if (pending && rolled) {
-        if (!pending.selected) {
-          // Attente d'une pioche
-          if (myId === pending.pickerId) {
-            const pickKey = pending.pickerId + '_' + state.diceValue;
-            if (window.lastPickerKey !== pickKey) {
-              window.lastPickerKey = pickKey;
-              // On laisse un petit délai (600ms) pour que l'animation du jeton se finisse
-              setTimeout(() => {
-                showPickerModal(pending.targetName, pending.cards);
-              }, 600);
+        function renderGame(state) {
+            const cur = state.players[state.currentPlayerIndex];
+            const mob = window.innerWidth <= 600;
+            const isMyTurn = cur?.id === myId;
+            const rolled = state.diceValue != null;
+            const tbp = $('tb-players'); tbp.innerHTML = '';
+            state.players.forEach((p, i) => { const ch = document.createElement('div'); ch.className = 'tb-chip' + (i === state.currentPlayerIndex ? ' active' : ''); ch.innerHTML = '<div class="tb-dot" style="background:' + p.color + '"></div><span>' + esc(p.name) + '</span><span style="opacity:.45;font-size:.58rem;margin-left:.1rem;">' + p.position + '</span>'; tbp.appendChild(ch); });
+            $('tb-turn').textContent = cur ? cur.name + ' joue' : '';
+            if (mob) {
+                const mc = $('mob-cur'); mc.textContent = cur?.name || '…'; mc.style.color = cur?.color || '#fff';
+                if (rolled) $('dice-mob').textContent = FACES[state.diceValue - 1];
+                setBtns($('btn-roll-mob'), $('btn-end-turn-mob'), isMyTurn, rolled, state.pendingCardDraw);
+                const me = state.players.find(p => p.id === myId);
+                $('btn-joker-mob').disabled = me?.jokerUsed; $('btn-joker-mob').className = 'btn btn-joker btn-sm' + (me?.jokerUsed ? ' btn-disabled' : '');
+            } else {
+                const sp = $('side-players'); sp.innerHTML = '';
+                state.players.forEach((p, i) => { const d = document.createElement('div'); d.className = 'side-player' + (i === state.currentPlayerIndex ? ' active' : ''); d.innerHTML = '<div class="side-dot" style="background:' + p.color + '"></div><span class="side-name">' + esc(p.name) + '</span><span style="font-size:.65rem;color:var(--muted)">' + p.position + '/35</span>' + (p.jokerUsed ? '' : '<span class="joker-badge">🃏</span>'); sp.appendChild(d); });
+                const cn = $('cur-player-name'); cn.textContent = cur?.name || '…'; cn.style.color = cur?.color || '#fff';
+                if (rolled) $('dice-el').textContent = FACES[state.diceValue - 1];
+                setBtns($('btn-roll'), $('btn-end-turn'), isMyTurn, rolled, state.pendingCardDraw);
+                const me = state.players.find(p => p.id === myId);
+                $('btn-joker').disabled = me?.jokerUsed; $('btn-joker').className = 'btn btn-joker btn-sm' + (me?.jokerUsed ? ' btn-disabled' : '');
+                $('joker-status').textContent = me?.jokerUsed ? 'Joker utilisé ❌' : 'Joker disponible ✅';
             }
-          } else {
-            // Afficher toast en attente si je suis le joueur ciblé ou autre (Optionnel)
-            // if (myId === pending.targetPlayerId) { }
-          }
-        } else {
-          // La carte a été choisie, on affiche la grande révélation à tout le monde !
-          const revealKey = pending.selected.id + '_' + pending.pickerId + '_' + state.diceValue;
-          if (window.lastRevealKey !== revealKey) {
-            window.lastRevealKey = revealKey;
-            setTimeout(() => {
-              showRevealedModal(pending.selected, pending.pickerName, pending.targetName);
-            }, myId === pending.pickerId ? 100 : 500);
-          }
+            updateTokens(state.players, state.board);
+            const pending = state.pendingCardDraw;
+            if (pending && rolled) {
+                if (!pending.selected) {
+                    if (myId === pending.pickerId) {
+                        const pickKey = pending.pickerId + '_' + state.diceValue;
+                        if (window.lastPickerKey !== pickKey) { window.lastPickerKey = pickKey; setTimeout(() => { showPickerModal(pending.targetName, pending.cards); }, 600); }
+                    }
+                } else {
+                    const revealKey = pending.selected.id + '_' + pending.pickerId + '_' + state.diceValue;
+                    if (window.lastRevealKey !== revealKey) { window.lastRevealKey = revealKey; setTimeout(() => { showRevealedModal(pending.selected, pending.pickerName, pending.targetName); }, myId === pending.pickerId ? 100 : 500); }
+                }
+            }
         }
-      }
-    }
-    function setBtns(rollBtn, endBtn, isMyTurn, rolled, pendingCardDraw) {
-      rollBtn.className = 'btn btn-hot btn-sm' + (isMyTurn && !rolled ? '' : ' btn-disabled');
-      rollBtn.disabled = !(isMyTurn && !rolled);
-      const isWaitingCard = (pendingCardDraw && !pendingCardDraw.selected);
-      endBtn.style.display = (isMyTurn && rolled && !isWaitingCard) ? '' : 'none';
-    }
+        function setBtns(r, e, isMyTurn, rolled, pcd) { r.className = 'btn btn-hot btn-sm' + (isMyTurn && !rolled ? '' : ' btn-disabled'); r.disabled = !(isMyTurn && !rolled); const wait = (pcd && !pcd.selected); e.style.display = (isMyTurn && rolled && !wait) ? '' : 'none'; }
 
-    // ── FONCTIONS D'INTERFACE DES CARTES ──
-    window.pickCard = function (cardId, el) {
-      if (window.cardPickedActive) return;
-      window.cardPickedActive = true;
-      el.classList.add('flipping');
-      setTimeout(() => {
-        socket.emit('select_card', { cardId });
-        closeModal();
-      }, 400);
-    }
+        window.pickCard = function (cardId, el) { if (window.cardPickedActive) return; window.cardPickedActive = true; el.classList.add('flipping'); setTimeout(() => { socket.emit('select_card', { cardId }); closeModal(); }, 400); };
 
-    function showPickerModal(targetName, cards) {
-      window.cardPickedActive = false;
-      let cardsHTML = `<div class="cards-container">`;
-      cards.forEach(c => {
-        cardsHTML += `<div class="pick-card" onclick="pickCard(${c.id}, this)">❓</div>`;
-      });
-      cardsHTML += `</div><p style="font-size:0.85rem;color:var(--muted)">Clique sur une carte pour sceller le sort de <b>${targetName}</b> !</p>`;
-      openModal('🔮', 'À TOI DE JOUER !', cardsHTML, '', []);
-    }
-
-    function showRevealedModal(card, pickerName, targetName) {
-      let safeText = esc(card.text);
-      if (!safeText.includes('[[') && !safeText.includes('{joueur}')) {
-        safeText = "[[{joueur}]], " + safeText;
-      }
-
-      // Inject targetName
-      let textHtml = safeText.replaceAll('{joueur}', targetName);
-
-      // Highlight brackets
-      textHtml = textHtml.replace(/\[\[(.*?)\]\]/g, '<span style="color:#00d2ff;font-weight:900;">$1</span>');
-
-      const content = `
-        <div class="revealed-card">
-          <div style="font-size:1.1rem;font-weight:700;line-height:1.5;margin-bottom:1rem;color:white;">
-            ${textHtml}
-          </div>
-          <div style="font-size:0.8rem;color:var(--muted); font-style:italic;">
-            Carte de la destinée choisie par ${pickerName}
-          </div>
-        </div>
-      `;
-      openModal(card.type === 'gage' ? '🎯' : '💬', card.type === 'gage' ? 'GAGE !' : 'QUESTION !', content, 'modal-hot', [
-        { label: 'C\'est fait ! ✅', cls: 'btn-hot' }
-      ]);
-    }
-
-    // ── ANIMATION DU FAUX THERMOMETRE LOBBY ──
-    let thermoTriggered = false;
-    window.triggerThermo = window.triggerThermo || function () {
-      if (thermoTriggered) return;
-      thermoTriggered = true;
-      const target = 7.0 + Math.random() * 1.7; // 7.0 to 8.7 max
-      const duration = 2200;
-      const start = Date.now();
-
-      function update() {
-        const now = Date.now();
-        const t = Math.min((now - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - t, 3); // Ease out
-        const currentVal = target * ease;
-        const percent = (currentVal / 10) * 100;
-
-        $('thermo-fill').style.width = percent + '%';
-        $('thermo-val').textContent = currentVal.toFixed(1) + '°';
-
-        // Change glow according to temp
-        if (currentVal < 4) {
-          $('thermo-fill').style.boxShadow = '0 0 16px rgba(0, 210, 255, 0.6)';
-        } else if (currentVal < 7) {
-          $('thermo-fill').style.boxShadow = '0 0 16px rgba(168, 85, 247, 0.6)';
-        } else {
-          $('thermo-fill').style.boxShadow = '0 0 16px rgba(255, 51, 51, 0.8)';
+        function showPickerModal(targetName, cards) {
+            window.cardPickedActive = false;
+            let h = `<div class="cards-container">`;
+            cards.forEach(c => { h += `<div class="pick-card" onclick="pickCard(${c.id},this)">❓</div>`; });
+            h += `</div><p style="font-size:.83rem;color:var(--muted)">Choisis la carte de <b style="color:var(--text)">${targetName}</b> !</p>`;
+            openModal('🔮', 'À TOI DE JOUER !', h, '', []);
         }
 
-        if (t < 1) requestAnimationFrame(update);
-        else $('thermo-val').textContent = target.toFixed(1) + '° 🔥';
-      }
-      requestAnimationFrame(update);
-    };
+        function showRevealedModal(card, pickerName, targetName) {
+            let t = esc(card.text);
+            if (!t.includes('[[') && !t.includes('{joueur}')) t = '[[{joueur}]], ' + t;
+            let html = t.replaceAll('{joueur}', targetName);
+            html = html.replace(/\[\[(.*?)\]\]/g, '<span style="color:#4e9fdd;font-weight:800;">$1</span>');
+            const content = `<div class="revealed-card"><div style="font-size:1.05rem;font-weight:600;line-height:1.6;margin-bottom:.9rem;color:var(--text);">${html}</div><div style="font-size:.75rem;color:var(--muted);font-style:italic;">Carte choisie par ${pickerName}</div></div>`;
+            const isAction = card.category === 'action';
+            openModal(isAction ? '🎯' : '💬', isAction ? 'GAGE !' : 'QUESTION !', content, 'modal-hot', [{ label: "C'est fait ! ✅", cls: 'btn-hot' }]);
+        }
 
-    // ── TOAST DE CASE (pas de popup, on décide entre nous) ──
-    function showCaseToast(sq, playerName, isHot) {
-      if (sq.type === 'start') return;
-      let msg = '';
-      if (sq.type === 'finish') msg = '🏆 FINISH !';
-      else if (sq.barred) msg = '❌ BARRÉE ! Action Extrême !';
-      else if (sq.type === 'G') msg = '🤡 Gage !';
-      else if (sq.type === 'GH') msg = '🔥 Gage HOT !';
-      else if (sq.type === 'GF') msg = '❄️ Gage Froid !';
-      else if (isHot) msg = '🔥 Case HOT !';
-      else msg = '❄️ Case froide !';
+        let thermoTriggered = false;
+        window.triggerThermo = window.triggerThermo || function () {
+            if (thermoTriggered) return; thermoTriggered = true;
+            const target = 7.0 + Math.random() * 1.7, duration = 2200, start = Date.now();
+            function update() { const now = Date.now(), t = Math.min((now - start) / duration, 1), ease = 1 - Math.pow(1 - t, 3), cv = target * ease, pct = (cv / 10) * 100; $('thermo-fill').style.width = pct + '%'; $('thermo-val').textContent = cv.toFixed(1) + '°'; if (t < 1) requestAnimationFrame(update); else $('thermo-val').textContent = target.toFixed(1) + '° 🔥'; }
+            requestAnimationFrame(update);
+        };
 
-      toast(playerName + ' — ' + msg, 3500);
-      // Afficher le bouton fin de tour
-      $('btn-end-turn').style.display = '';
-      $('btn-end-turn-mob').style.display = '';
-    }
+        function showCaseToast(sq, playerName, isHot) {
+            if (sq.type === 'start') return;
+            let msg = '';
+            if (sq.type === 'finish') msg = '🏆 FINISH !';
+            else if (sq.barred) msg = '✕ BARRÉE ! Action Extrême !';
+            else if (sq.type === 'G') msg = '🃏 Gage !';
+            else if (sq.type === 'GH') msg = '🔥 Gage HOT !';
+            else if (sq.type === 'GF') msg = '❄️ Gage Froid !';
+            else if (isHot) msg = '🔥 Case HOT !';
+            else msg = '❄️ Case froide !';
+            toast(playerName + ' — ' + msg, 3500);
+            $('btn-end-turn').style.display = ''; $('btn-end-turn-mob').style.display = '';
+        }
 
-    // ── DÉ ──
-    function doRoll(diceEl) {
-      diceEl.classList.add('rolling');
-      let i = 0; const ani = setInterval(() => { diceEl.textContent = FACES[Math.floor(Math.random() * 6)]; if (++i > 8) clearInterval(ani); }, 60);
-      socket.emit('roll_dice', res => {
-        diceEl.classList.remove('rolling');
-        if (!res?.ok) { toast('❌ ' + (res?.error || 'Erreur')); return; }
-        const f = FACES[res.dice - 1]; $('dice-el').textContent = f; $('dice-mob').textContent = f;
-        toast('🎲 ' + res.dice + ' !');
-        if (res.square) setTimeout(() => {
-          const cur = currentState?.players[currentState?.currentPlayerIndex];
-          const isHot = squareHotness[res.square.id];
-          showCaseToast(res.square, cur?.name || '?', isHot);
-        }, 500);
-      });
-    }
-    function doEnd() { socket.emit('end_turn'); $('btn-end-turn').style.display = 'none'; $('btn-end-turn-mob').style.display = 'none'; }
-    function doJoker() { socket.emit('use_joker', res => { if (!res?.ok) toast('❌ ' + (res?.error || 'Erreur')); else toast('🤡 Joker déployé !'); }); }
+        function doRoll(diceEl) { diceEl.classList.add('rolling'); let i = 0; const ani = setInterval(() => { diceEl.textContent = FACES[Math.floor(Math.random() * 6)]; if (++i > 8) clearInterval(ani); }, 60); socket.emit('roll_dice', res => { diceEl.classList.remove('rolling'); if (!res?.ok) { toast('❌ ' + (res?.error || 'Erreur')); return; } const f = FACES[res.dice - 1]; $('dice-el').textContent = f; $('dice-mob').textContent = f; toast('🎲 ' + res.dice + ' !'); if (res.square) setTimeout(() => { const cur = currentState?.players[currentState?.currentPlayerIndex]; const isHot = squareHotness[res.square.id]; showCaseToast(res.square, cur?.name || '?', isHot); }, 500); }); }
+        function doEnd() { socket.emit('end_turn'); $('btn-end-turn').style.display = 'none'; $('btn-end-turn-mob').style.display = 'none'; }
+        function doJoker() { socket.emit('use_joker', res => { if (!res?.ok) toast('❌ ' + (res?.error || 'Erreur')); else toast('🃏 Joker déployé !'); }); }
 
-    // ── BOUTONS ACCUEIL & GENDER SELECTION ──
-    let selectedSex = null;
-    window.selectSex = function (sx) {
-      selectedSex = sx;
-      $('btn-sex-m').style.borderColor = sx === 'm' ? '#00d2ff' : 'transparent';
-      $('btn-sex-m').style.background = sx === 'm' ? 'rgba(0, 210, 255, 0.15)' : '';
-      $('btn-sex-f').style.borderColor = sx === 'f' ? '#ff416c' : 'transparent';
-      $('btn-sex-f').style.background = sx === 'f' ? 'rgba(255, 65, 108, 0.15)' : '';
-    };
+        let selectedSex = null;
+        window.selectSex = function (sx) {
+            selectedSex = sx;
+            $('btn-sex-m').className = 'sex-btn' + (sx === 'm' ? ' selected-m' : '');
+            $('btn-sex-f').className = 'sex-btn' + (sx === 'f' ? ' selected-f' : '');
+        };
 
-    $('btn-create').onclick = () => {
-      const name = $('home-name').value.trim();
-      if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
-      if (!selectedSex) { toast('⚠️ Choisis si tu es Fille ou Garçon !'); return; }
-      socket.emit('create_game', { name, sex: selectedSex }, res => {
-        if (!res.ok) { toast('❌ ' + res.error); return; }
-        myGameCode = res.code;
-        showScreen('lobby');
-        $('lobby-code').textContent = res.code;
-      });
-    };
+        $('btn-create').onclick = () => {
+            const name = $('home-name').value.trim();
+            if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
+            if (!selectedSex) { toast('⚠️ Choisis Fille ou Garçon !'); return; }
+            socket.emit('create_game', { name, sex: selectedSex }, res => { if (!res.ok) { toast('❌ ' + res.error); return; } myGameCode = res.code; showScreen('lobby'); $('lobby-code').textContent = res.code; });
+        };
 
-    function joinGame() {
-      const name = $('home-name').value.trim();
-      const code = $('home-code').value.trim();
+        function joinGame() {
+            const name = $('home-name').value.trim(), code = $('home-code').value.trim();
+            if (code === '1234') { startAdminMode(); return; }
+            if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
+            if (!selectedSex) { toast('⚠️ Choisis Fille ou Garçon !'); return; }
+            if (code.length !== 6) { toast('⚠️ Code invalide'); return; }
+            socket.emit('join_game', { code, name, sex: selectedSex }, res => { if (!res.ok) { toast('❌ ' + res.error); return; } myGameCode = res.code; showScreen('lobby'); $('lobby-code').textContent = res.code; });
+        }
 
-      // ADMIN INTERCEPT
-      if (code === '1234') {
-        startAdminMode();
-        return;
-      }
+        $('btn-join').onclick = joinGame;
+        $('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+        $('btn-ready').onclick = () => socket.emit('player_ready');
+        $('btn-start').onclick = () => socket.emit('start_game', res => { if (res && !res.ok) toast('❌ ' + res.error); });
+        $('btn-roll').onclick = () => { if (!$('btn-roll').disabled) doRoll($('dice-el')); };
+        $('btn-end-turn').onclick = doEnd;
+        $('btn-joker').onclick = () => { if (!$('btn-joker').disabled) doJoker(); };
+        $('btn-roll-mob').onclick = () => { if (!$('btn-roll-mob').disabled) doRoll($('dice-mob')); };
+        $('btn-end-turn-mob').addEventListener('click', doEnd);
+        $('btn-joker-mob').addEventListener('click', () => socket.emit('use_joker'));
+        $('btn-replay').onclick = () => { myGameCode = null; currentState = null; boardReady = false; document.querySelectorAll('.cell,.player-token').forEach(e => e.remove()); thermoTriggered = false; $('thermo-fill').style.width = '0%'; $('thermo-val').textContent = '0.0°'; showScreen('home'); $('home-name').value = ''; $('home-code').value = ''; };
 
-      if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
-      if (!selectedSex) { toast('⚠️ Choisis si tu es Fille ou Garçon !'); return; }
-      if (code.length !== 6) { toast('⚠️ Code invalide'); return; }
-      socket.emit('join_game', { code, name, sex: selectedSex }, res => {
-        if (!res.ok) { toast('❌ ' + res.error); return; }
-        myGameCode = res.code;
-        showScreen('lobby');
-        $('lobby-code').textContent = res.code;
-      });
-    }
+        window.addEventListener('load', () => { const up = new URLSearchParams(window.location.search), c = up.get('code'); if (c) { $('home-code').value = c; $('home-name').focus(); } });
 
-    $('btn-join').onclick = joinGame;
-    $('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
-    $('btn-ready').onclick = () => socket.emit('player_ready');
-    $('btn-start').onclick = () => socket.emit('start_game', res => { if (res && !res.ok) toast('❌ ' + res.error); });
-    $('btn-roll').onclick = () => { if (!$('btn-roll').disabled) doRoll($('dice-el')); };
-    $('btn-end-turn').onclick = doEnd;
-    $('btn-joker').onclick = () => { if (!$('btn-joker').disabled) doJoker(); };
-    $('btn-roll-mob').onclick = () => { if (!$('btn-roll-mob').disabled) doRoll($('dice-mob')); };
-    $('btn-end-turn-mob').addEventListener('click', doEnd);
-    $('btn-joker-mob').addEventListener('click', () => socket.emit('use_joker'));
-    $('btn-replay').onclick = () => {
-      myGameCode = null; currentState = null; boardReady = false;
-      document.querySelectorAll('.cell,.player-token').forEach(e => e.remove());
-      thermoTriggered = false;
-      $('thermo-fill').style.width = '0%';
-      $('thermo-val').textContent = '0.0°';
-      showScreen('home');
-      $('home-name').value = '';
-      $('home-code').value = '';
-    };
+        function startConfetti() { const cv = $('confetti-canvas'); cv.width = innerWidth; cv.height = innerHeight; const c = cv.getContext('2d'); const pp = Array.from({ length: 80 }, () => ({ x: Math.random() * cv.width, y: Math.random() * cv.height - cv.height, r: Math.random() * 5 + 3, col: ['#c0392b', '#e67e22', '#1a6fa8', '#27ae60', '#7c3bed', '#f1c40f'][Math.floor(Math.random() * 6)], vx: (Math.random() - .5) * 3, vy: Math.random() * 4 + 2, rot: Math.random() * 360, vr: Math.random() * 5 - 2.5 })); let fr = 0; (function loop() { c.clearRect(0, 0, cv.width, cv.height); pp.forEach(p => { p.x += p.vx; p.y += p.vy; p.rot += p.vr; if (p.y > cv.height + 10) { p.y = -10; p.x = Math.random() * cv.width; } c.save(); c.translate(p.x, p.y); c.rotate(p.rot * Math.PI / 180); c.fillStyle = p.col; c.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); c.restore(); }); if (++fr < 240) requestAnimationFrame(loop); })(); }
 
-    // Check if user came from a QR code
-    window.addEventListener('load', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const codeFromUrl = urlParams.get('code');
-      if (codeFromUrl) {
-        $('home-code').value = codeFromUrl;
-        // Optionally auto-focus name so they can just type and join
-        $('home-name').focus();
-      }
-    });
+        let adminAllCards = [], adminKeptCards = [], adminIndex = 0;
+        async function startAdminMode() { showScreen('admin'); $('admin-counter').textContent = 'Chargement...'; try { const resp = await fetch('/cards.json'); if (!resp.ok) throw new Error('Erreur réseau'); adminAllCards = await resp.json(); adminKeptCards = []; adminIndex = 0; updateAdminUI(); } catch (e) { $('admin-card-text').innerHTML = 'Erreur: ' + e.message; } }
 
-    // ── CONFETTI ──
-    function startConfetti() {
-      const cv = $('confetti-canvas'); cv.width = innerWidth; cv.height = innerHeight;
-      const c = cv.getContext('2d');
-      const pp = Array.from({ length: 90 }, () => ({ x: Math.random() * cv.width, y: Math.random() * cv.height - cv.height, r: Math.random() * 5 + 3, col: ['#ff3300', '#ff8c00', '#0055ff', '#2ecc71', '#a855f7', '#f1c40f'][Math.floor(Math.random() * 6)], vx: (Math.random() - .5) * 3, vy: Math.random() * 4 + 2, rot: Math.random() * 360, vr: Math.random() * 5 - 2.5 }));
-      let fr = 0; (function loop() { c.clearRect(0, 0, cv.width, cv.height); pp.forEach(p => { p.x += p.vx; p.y += p.vy; p.rot += p.vr; if (p.y > cv.height + 10) { p.y = -10; p.x = Math.random() * cv.width; } c.save(); c.translate(p.x, p.y); c.rotate(p.rot * Math.PI / 180); c.fillStyle = p.col; c.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); c.restore(); }); if (++fr < 240) requestAnimationFrame(loop); })();
-    }
+        function updateAdminUI() {
+            if (adminIndex >= adminAllCards.length) { $('admin-counter').textContent = 'Terminé ! ' + adminKeptCards.length + ' cartes gardées.'; $('admin-card-text').innerHTML = '✅ Toutes les cartes revues !<br>Copie ton JSON.'; $('admin-actions').style.display = 'none'; $('admin-export').value = JSON.stringify(adminKeptCards, null, 2); return; }
+            $('admin-actions').style.display = 'flex';
+            const c = adminAllCards[adminIndex];
+            $('admin-counter').textContent = 'Review : ' + (adminIndex + 1) + ' / ' + adminAllCards.length + ' (Gardées: ' + adminKeptCards.length + ')';
+            let t = esc(c.text);
+            t = t.replace(/{joueur oppos[eé]}/gi, '<span style="color:#e67e22;font-weight:800;">NOAH</span>');
+            t = t.replace(/{F}/gi, '<span style="color:#c0392b;font-weight:800;">RACHELLE / LOUISE</span>');
+            t = t.replace(/{M}/gi, '<span style="color:#1a6fa8;font-weight:800;">LUCA / NOAH</span>');
+            t = t.replace(/{autre}/gi, '<span style="color:#7c3bed;font-weight:800;">LOUISE</span>');
+            const colors = { 'glacé': '#1a6fa8', 'froid': '#2980b9', 'chaud': '#e67e22', 'très chaud': '#c0392b', 'extrême': '#7c0000' };
+            $('admin-card-text').innerHTML = '<span style="color:' + (colors[c.type] || '#fff') + ';font-size:0.75rem;">[' + c.type.toUpperCase() + ' · Int:' + c.intensity + ' · Sips:' + c.sips + ']</span><br><br>' + t;
+            $('admin-export').value = JSON.stringify(adminKeptCards, null, 2);
+        }
+        $('btn-admin-keep')?.addEventListener('click', () => { if (adminIndex < adminAllCards.length) { adminKeptCards.push(adminAllCards[adminIndex]); adminIndex++; updateAdminUI(); } });
+        $('btn-admin-remove')?.addEventListener('click', () => { if (adminIndex < adminAllCards.length) { adminIndex++; updateAdminUI(); } });
+        window.copyAdminJson = function () { const el = $('admin-export'); el.select(); document.execCommand('copy'); toast('✅ JSON copié !'); };
 
-    // ── ADMIN MODE ──
-    let adminAllCards = [];
-    let adminKeptCards = [];
-    let adminIndex = 0;
-
-    async function startAdminMode() {
-      showScreen('admin');
-      $('admin-counter').textContent = 'Chargement JSON...';
-      try {
-        const resp = await fetch('/cards.json');
-        if (!resp.ok) throw new Error('Network response was not ok');
-        adminAllCards = await resp.json();
-        adminKeptCards = [];
-        adminIndex = 0;
-        updateAdminUI();
-      } catch (e) {
-        $('admin-card-text').innerHTML = `Erreur de chargement: ${e.message}`;
-      }
-    }
-
-    function updateAdminUI() {
-      if (adminIndex >= adminAllCards.length) {
-        $('admin-counter').textContent = `Terminé ! ${adminKeptCards.length} cartes gardées.`;
-        $('admin-card-text').innerHTML = '✅ Tu as fait le tour de toutes les cartes !<br>Copie ton JSON.';
-        $('admin-actions').style.display = 'none';
-        $('admin-export').value = JSON.stringify(adminKeptCards, null, 2);
-        return;
-      }
-      $('admin-actions').style.display = 'flex';
-      const c = adminAllCards[adminIndex];
-      $('admin-counter').textContent = `Review : ${adminIndex + 1} / ${adminAllCards.length} (🏆 Gardées: ${adminKeptCards.length})`;
-
-      let t = esc(c.text);
-      t = t.replace(/{joueur oppos[eé]}/gi, '<span style="color:#ff8c00;font-weight:900;">NOAH</span>');
-      t = t.replace(/{F}/gi, '<span style="color:#ff416c;font-weight:900;">RACHELLE / LOUISE</span>');
-      t = t.replace(/{M}/gi, '<span style="color:#00d2ff;font-weight:900;">LUCA / NOAH</span>');
-      t = t.replace(/{autre}/gi, '<span style="color:#a855f7;font-weight:900;">LOUISE</span>');
-      t = t.replace(/{lecteur}/gi, '<span style="color:var(--muted);font-weight:900;">LE LECTEUR</span>');
-
-      let colors = { 'glacé': '#00d2ff', 'froid': '#0084ff', 'chaud': '#ff8c00', 'très chaud': '#ff3333', 'extrême': '#8b0000' };
-      $('admin-card-text').innerHTML = `<span style="color:${colors[c.type] || '#fff'};font-size:0.8rem;">[${c.type.toUpperCase()} - Int: ${c.intensity} - Gorgées: ${c.sips}]</span><br><br>${t}`;
-
-      $('admin-export').value = JSON.stringify(adminKeptCards, null, 2);
-    }
-
-    $('btn-admin-keep')?.addEventListener('click', () => {
-      if (adminIndex < adminAllCards.length) {
-        adminKeptCards.push(adminAllCards[adminIndex]);
-        adminIndex++;
-        updateAdminUI();
-      }
-    });
-
-    $('btn-admin-remove')?.addEventListener('click', () => {
-      if (adminIndex < adminAllCards.length) {
-        adminIndex++;
-        updateAdminUI();
-      }
-    });
-
-    window.copyAdminJson = function () {
-      const el = $('admin-export');
-      el.select();
-      document.execCommand('copy');
-      toast('✅ JSON copié !');
-    };
-
-    showScreen('home');
-  </script>
+        showScreen('home');
+    </script>
 </body>
 
 </html>
