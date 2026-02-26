@@ -938,7 +938,7 @@
     // ── MODAL ──
     function openModal(icon, title, desc, cls, actions) {
       const box = $('modal-box'); box.className = ''; if (cls) box.classList.add(cls);
-      $('modal-icon').textContent = icon; $('modal-title').textContent = title; $('modal-desc').textContent = desc;
+      $('modal-icon').textContent = icon; $('modal-title').textContent = title; $('modal-desc').innerHTML = desc;
       const act = $('modal-actions'); act.innerHTML = '';
       (actions || []).forEach(a => { const b = document.createElement('button'); b.className = 'btn ' + (a.cls || 'btn-ghost'); b.textContent = a.label; b.onclick = () => { a.fn?.(); closeModal(); }; act.appendChild(b); });
       $('modal-overlay').classList.add('open');
