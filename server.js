@@ -355,35 +355,47 @@ io.on('connection', (socket) => {
 
     const shuffledCards = [...availableCards].sort(() => 0.5 - Math.random());
 
-    // Groupes par blocs d'intensité globale
-    const i1 = shuffledCards.filter(c => c.intensity <= 2);
-    const i2 = shuffledCards.filter(c => c.intensity === 3 || c.intensity === 4);
-    const i3 = shuffledCards.filter(c => c.intensity === 5 || c.intensity === 6);
-    const i4 = shuffledCards.filter(c => c.intensity === 7 || c.intensity === 8);
-    const i5 = shuffledCards.filter(c => c.intensity >= 9);
+    
+    // On sépare Actions (Lettres/Barré) et Questions (Neutre)
+    const isActionSquare = square.barred || ['G', 'GH', 'GF'].includes(square.type);
+    const requiredCategory = isActionSquare ? 'action' : 'question';
+    let usableCards = shuffledCards.filter(c => c.category === requiredCategory);
+    
+    // Sécurité: si on n'a plus assez de cartes (ne devrait pas arriver avec l'historique de 35)
+    if (usableCards.length < 5) usableCards = shuffledCards;
 
-    let poolCold, poolChaud, poolTresChaud, poolExtreme;
+    // Groupes par blocs d'intensité globale filtré
+    const i1 = usableCards.filter(c => c.intensity <= 2);
+    const i2 = usableCards.filter(c => c.intensity === 3 || c.intensity === 4);
+    const i3 = usableCards.filter(c => c.intensity === 5 || c.intensity === 6);
+    const i4 = usableCards.filter(c => c.intensity === 7 || c.intensity === 8);
+    const i5 = usableCards.filter(c => c.intensity >= 9);
+
+    let pGlace, pFroid, pChaud, pTresChaud, pExtreme;
 
     if (progress <= 0.33) {
       // DÉBUT DE PARTIE (Doux) : Pas de cartes trop intimes dès le début
-      poolCold = [...i1];               // Glacé (1-2)
-      poolChaud = [...i2];              // Froid (3-4)
-      poolTresChaud = [...i3];          // Chaud (5-6)
-      poolExtreme = [...i4];            // Très chaud (7-8) au pire
+      pGlace = [...i1];
+      pFroid = [...i2];
+      pChaud = [...i3];
+      pTresChaud = [...i4];
+      pExtreme = [...i4]; // Extrême bridé au Très Chaud max en début de partie
     } else if (progress <= 0.66) {
       // MILIEU DE PARTIE (Normal)
-      poolCold = [...i1, ...i2];        // Glacé/Froid (1-4)
-      poolChaud = [...i3];              // Chaud (5-6)
-      poolTresChaud = [...i4];          // Très chaud (7-8)
-      poolExtreme = [...i5];            // Extrême (9+)
+      pGlace = [...i1, ...i2];
+      pFroid = [...i2];
+      pChaud = [...i3];
+      pTresChaud = [...i4];
+      pExtreme = [...i5];
     } else {
       // FIN DE PARTIE (Hardcore) : Froid modéré, Extrême vraiment ultime !
-      poolCold = [...i2, ...i3];        // Le "froid" d'ici vaut un chaud de début de partie (3-6)
-      poolChaud = [...i4];              // Le chaud devient Très Chaud (7-8)
-      poolTresChaud = [...i5];          // Le très chaud devient Extrême (9+)
-
-      const iMax = shuffledCards.filter(c => c.intensity >= 10);
-      poolExtreme = iMax.length >= 2 ? [...iMax] : [...i5]; // Niveau Max
+      pGlace = [...i2];        
+      pFroid = [...i3];        
+      pChaud = [...i4];        
+      pTresChaud = [...i5];    
+      
+      const iMax = usableCards.filter(c => c.intensity >= 10);
+      pExtreme = iMax.length >= 2 ? [...iMax] : [...i5];
     }
 
     let rawCards = [];
@@ -411,21 +423,22 @@ io.on('connection', (socket) => {
 
       if (square.barred) {
         // Case extrême : 100% extrême
-        rawCards.push(draw([poolExtreme, poolTresChaud, poolChaud, poolCold]));
+        rawCards.push(draw([pExtreme, pTresChaud, pChaud, pFroid]));
       } else if (square.type === 'GH') {
         // Case très chaude : 70% extrême, 30% très chaud
-        if (pct < 70) rawCards.push(draw([poolExtreme, poolTresChaud, poolChaud, poolCold]));
-        else rawCards.push(draw([poolTresChaud, poolExtreme, poolChaud, poolCold]));
+        if (pct < 70) rawCards.push(draw([pExtreme, pTresChaud, pChaud, pFroid]));
+        else rawCards.push(draw([pTresChaud, pExtreme, pChaud, pFroid]));
       } else if (square.type === 'G' || square.type === 'hot') {
         // Case chaude : 50% très chaud, 30% extrême, 20% chaud
-        if (pct < 50) rawCards.push(draw([poolTresChaud, poolExtreme, poolChaud, poolCold]));
-        else if (pct < 80) rawCards.push(draw([poolExtreme, poolTresChaud, poolChaud, poolCold]));
-        else rawCards.push(draw([poolChaud, poolTresChaud, poolExtreme, poolCold]));
+        if (pct < 50) rawCards.push(draw([pTresChaud, pExtreme, pChaud, pFroid]));
+        else if (pct < 80) rawCards.push(draw([pExtreme, pTresChaud, pChaud, pFroid]));
+        else rawCards.push(draw([pChaud, pTresChaud, pExtreme, pFroid]));
       } else {
-        // Case FROIDE (Cold / GF) : 15% froid, 60% chaud, 25% très chaud (pas d'extrême)
-        if (pct < 15) rawCards.push(draw([poolCold, poolChaud, poolTresChaud, poolExtreme]));
-        else if (pct < 75) rawCards.push(draw([poolChaud, poolTresChaud, poolCold, poolExtreme]));
-        else rawCards.push(draw([poolTresChaud, poolChaud, poolExtreme, poolCold]));
+        // Case FROIDE (Cold / GF) 
+        // TRÈS RARE glacé (10%), un peu de Froid (40%), beaucoup de chaud (50%)
+        if (pct < 10) rawCards.push(draw([pGlace, pFroid, pChaud, pTresChaud]));
+        else if (pct < 50) rawCards.push(draw([pFroid, pChaud, pGlace, pTresChaud]));
+        else rawCards.push(draw([pChaud, pFroid, pTresChaud, pExtreme]));
       }
     }
 
