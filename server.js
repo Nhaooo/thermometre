@@ -11,20 +11,25 @@ const { Server } = require('socket.io');
 const path = require('path');
 const QRCode = require('qrcode');
 
-// --- DATABASE DE CARTES MOCKUP ---
-// On simule 10 cartes. Plus tard tu en mettras 100 via JSON.
-const CARDS = [
-  { id: 1, type: "question", intensity: 2, text: "Si tu devais échanger ta vie avec quelqu'un ici pour 24h, qui choisirais-tu, {joueur} ?", category: "cold" },
-  { id: 2, type: "gage", intensity: 8, text: "{joueur}, tu dois faire un massage des épaules à la personne à ta droite de 30 secondes.", category: "hot" },
-  { id: 3, type: "question", intensity: 14, text: "{joueur}, cite la chose physique qui t'attire le plus chez la personne qui a tiré cette carte.", category: "hot" },
-  { id: 4, type: "gage", intensity: 18, text: "{joueur}, embrasse dans le cou la personne de ton choix pendant 3 secondes.", category: "GH" },
-  { id: 5, type: "gage", intensity: 5, text: "{joueur}, imite le cri d'un animal aléatoire le plus fort possible.", category: "G" },
-  { id: 6, type: "gage", intensity: 10, text: "{joueur}, bois 3 gorgées sans utiliser tes mains.", category: "hot" },
-  { id: 7, type: "question", intensity: 3, text: "{joueur}, qui dans cette pièce a le plus de chances de finir en prison et pourquoi ?", category: "cold" },
-  { id: 8, type: "gage", intensity: 12, text: "{joueur}, fais un compliment charnel à la personne en face de toi.", category: "hot" },
-  { id: 9, type: "gage", intensity: 20, text: "{joueur}, enlève un vêtement (au choix).", category: "barred" },
-  { id: 10, type: "question", intensity: 1, text: "{joueur}, quel est ton fantasme secret innocent ?", category: "cold" }
-];
+const CARDS = require('./cards.json');
+
+function formatCardText(text, game, currentPlayer) {
+  const otherPlayers = game.players.filter(p => p.id !== currentPlayer.id);
+  const girls = otherPlayers.filter(p => p.sex === 'f');
+  const boys = otherPlayers.filter(p => p.sex === 'm');
+
+  const randomOther = () => otherPlayers.length > 0 ? `[[${otherPlayers[Math.floor(Math.random() * otherPlayers.length)].name}]]` : '[[quelqu\'un]]';
+  const randomGirl = () => girls.length > 0 ? `[[${girls[Math.floor(Math.random() * girls.length)].name}]]` : randomOther();
+  const randomBoy = () => boys.length > 0 ? `[[${boys[Math.floor(Math.random() * boys.length)].name}]]` : randomOther();
+  const oppositeSex = () => currentPlayer.sex === 'm' ? randomGirl() : randomBoy();
+
+  let formatted = text;
+  formatted = formatted.replace(/{joueur oppos[eé]}/gi, oppositeSex());
+  formatted = formatted.replace(/{F}/gi, randomGirl());
+  formatted = formatted.replace(/{M}/gi, randomBoy());
+  formatted = formatted.replace(/{autre}/gi, randomOther());
+  return formatted;
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -331,19 +336,49 @@ io.on('connection', (socket) => {
     }
 
     // --- CARDS DRAW LOGIC ---
-    // Trouver l'intensité approximative de la case
-    let targetIntensity = 5;
-    if (square.type === 'cold') targetIntensity = 4;
-    else if (square.type === 'G') targetIntensity = 7;
-    else if (square.type === 'GF') targetIntensity = 6;
-    else if (square.type === 'hot') targetIntensity = 12;
-    else if (square.type === 'GH') targetIntensity = 16;
-    if (square.barred) targetIntensity += 4; // BUMP up the heat.
+    // On met en place l'algorithme biaisé du thermomètre !
+    let poolCold = CARDS.filter(c => c.type === 'glacé' || c.type === 'froid').sort(() => 0.5 - Math.random());
+    let poolChaud = CARDS.filter(c => c.type === 'chaud').sort(() => 0.5 - Math.random());
+    let poolTresChaud = CARDS.filter(c => c.type === 'très chaud').sort(() => 0.5 - Math.random());
+    let poolExtreme = CARDS.filter(c => c.type === 'extrême').sort(() => 0.5 - Math.random());
 
-    // Piocher 5 cartes aléatoires dans notre base (pour l'instant full random parmis les cartes dispos)
-    // Idéalement triées autour de `targetIntensity`.
-    const shuffledCards = [...CARDS].sort(() => 0.5 - Math.random());
-    const drawnCards = shuffledCards.slice(0, 5);
+    let rawCards = [];
+
+    // Fonction qui pioche la première carte dispo dans l'ordre de priorité des decks
+    function draw(pools) {
+      for (const p of pools) {
+        if (p.length > 0) return p.shift();
+      }
+      return CARDS[0]; // sécurité si tout est vide
+    }
+
+    for (let i = 0; i < 5; i++) {
+      let pct = Math.random() * 100;
+
+      if (square.barred) {
+        // Case extrême : 100% extrême
+        rawCards.push(draw([poolExtreme, poolTresChaud, poolChaud, poolCold]));
+      } else if (square.type === 'GH') {
+        // Case très chaude : 70% extrême, 30% très chaud
+        if (pct < 70) rawCards.push(draw([poolExtreme, poolTresChaud, poolChaud, poolCold]));
+        else rawCards.push(draw([poolTresChaud, poolExtreme, poolChaud, poolCold]));
+      } else if (square.type === 'G' || square.type === 'hot') {
+        // Case chaude : 50% très chaud, 30% extrême, 20% chaud
+        if (pct < 50) rawCards.push(draw([poolTresChaud, poolExtreme, poolChaud, poolCold]));
+        else if (pct < 80) rawCards.push(draw([poolExtreme, poolTresChaud, poolChaud, poolCold]));
+        else rawCards.push(draw([poolChaud, poolTresChaud, poolExtreme, poolCold]));
+      } else {
+        // Case FROIDE (Cold / GF) : 15% froid, 60% chaud, 25% très chaud (pas d'extrême)
+        if (pct < 15) rawCards.push(draw([poolCold, poolChaud, poolTresChaud, poolExtreme]));
+        else if (pct < 75) rawCards.push(draw([poolChaud, poolTresChaud, poolCold, poolExtreme]));
+        else rawCards.push(draw([poolTresChaud, poolChaud, poolExtreme, poolCold]));
+      }
+    }
+
+    const drawnCards = rawCards.map(c => ({
+      ...c,
+      text: formatCardText(c.text, game, currentPlayer)
+    }));
 
     // Pick a picker (another player randomly, if alone pick oneself)
     const otherPlayers = game.players.filter(p => p.id !== currentPlayer.id);

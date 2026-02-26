@@ -1213,7 +1213,18 @@
 
     function showRevealedModal(card, pickerName, targetName) {
       const intensity = getIntensityDetails(card.intensity);
-      const textHtml = card.text.replaceAll('{joueur}', `<span style="color:#ff416c;font-weight:900;">${targetName}</span>`);
+
+      let safeText = esc(card.text);
+      if (!safeText.includes('[[') && !safeText.includes('{joueur}')) {
+        safeText = "[[{joueur}]], " + safeText;
+      }
+
+      // Inject targetName
+      let textHtml = safeText.replaceAll('{joueur}', targetName);
+
+      // Highlight brackets
+      textHtml = textHtml.replace(/\[\[(.*?)\]\]/g, '<span style="color:#00d2ff;font-weight:900;">$1</span>');
+
       const content = `
         <div class="revealed-card">
           <div class="revealed-intensity ${intensity.cls}">Intensité ${card.intensity}/20 • ${intensity.label}</div>
