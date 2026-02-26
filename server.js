@@ -315,7 +315,7 @@ io.on('connection', (socket) => {
     }
 
     // S'il y a des pièges à moins de 6 cases, on a 66% de chance brut de forcer le dé à aller dessus (2 fois sur 3)
-    if (trapRolls.length > 0 && Math.random() < 0.48) {
+    if (trapRolls.length > 0 && Math.random() < 0.37) {
       dice = trapRolls[Math.floor(Math.random() * trapRolls.length)];
       console.log(`[KARMA] Le serveur a truqué le dé pour faire tomber ${currentPlayer.name} (pos ${pos}) sur le piège à ${dice} cases !`);
     }
