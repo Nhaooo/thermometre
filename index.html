@@ -819,6 +819,37 @@
     </div>
   </div>
 
+  <!-- ADMIN TINDER -->
+  <div id="screen-admin" class="screen">
+    <div class="logo" style="font-size:1.55rem;">🛠️ Admin Tinder</div>
+    <div class="card"
+      style="width:100%;max-width:370px;text-align:center;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+      <div id="admin-counter" style="color:var(--muted);font-size:0.8rem;font-weight:700;">Chargement...</div>
+
+      <div id="admin-card-text"
+        style="font-size:1.1rem;font-weight:700;line-height:1.5;min-height:100px;color:white;background:rgba(255,255,255,0.05);padding:1rem;border-radius:0.8rem;">
+        Patientez...
+      </div>
+
+      <div style="display:flex;gap:1rem;justify-content:center;margin-top:0.5rem;" id="admin-actions">
+        <button class="btn btn-cold" id="btn-admin-remove" style="flex:1;">❌ Retirer</button>
+        <button class="btn btn-hot" id="btn-admin-keep" style="flex:1;">✅ Garder</button>
+      </div>
+
+      <div style="text-align:left;margin-top:1rem;">
+        <label style="font-weight:700;font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.2rem;">Rendu
+          JSON Final :</label>
+        <textarea id="admin-export" class="input"
+          style="height:100px;font-size:0.65rem;border-color:rgba(255,255,255,0.1);" readonly></textarea>
+      </div>
+
+      <button class="btn btn-ghost" onclick="copyAdminJson()" style="width:100%;margin-top:0.5rem;">📋 Copier JSON
+        final</button>
+      <button class="btn btn-ghost" onclick="showScreen('home')" style="width:100%;font-size:0.8rem;opacity:0.6;">⏪
+        Quitter Admin</button>
+    </div>
+  </div>
+
   <!-- LOBBY -->
   <div id="screen-lobby" class="screen">
     <div class="logo" style="font-size:1.55rem;">🌡️ Lobby</div>
@@ -1337,6 +1368,13 @@
     function joinGame() {
       const name = $('home-name').value.trim();
       const code = $('home-code').value.trim();
+
+      // ADMIN INTERCEPT
+      if (code === '1234') {
+        startAdminMode();
+        return;
+      }
+
       if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
       if (!selectedSex) { toast('⚠️ Choisis si tu es Fille ou Garçon !'); return; }
       if (code.length !== 6) { toast('⚠️ Code invalide'); return; }
@@ -1387,6 +1425,73 @@
       const pp = Array.from({ length: 90 }, () => ({ x: Math.random() * cv.width, y: Math.random() * cv.height - cv.height, r: Math.random() * 5 + 3, col: ['#ff3300', '#ff8c00', '#0055ff', '#2ecc71', '#a855f7', '#f1c40f'][Math.floor(Math.random() * 6)], vx: (Math.random() - .5) * 3, vy: Math.random() * 4 + 2, rot: Math.random() * 360, vr: Math.random() * 5 - 2.5 }));
       let fr = 0; (function loop() { c.clearRect(0, 0, cv.width, cv.height); pp.forEach(p => { p.x += p.vx; p.y += p.vy; p.rot += p.vr; if (p.y > cv.height + 10) { p.y = -10; p.x = Math.random() * cv.width; } c.save(); c.translate(p.x, p.y); c.rotate(p.rot * Math.PI / 180); c.fillStyle = p.col; c.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); c.restore(); }); if (++fr < 240) requestAnimationFrame(loop); })();
     }
+
+    // ── ADMIN MODE ──
+    let adminAllCards = [];
+    let adminKeptCards = [];
+    let adminIndex = 0;
+
+    async function startAdminMode() {
+      showScreen('admin');
+      $('admin-counter').textContent = 'Chargement JSON...';
+      try {
+        const resp = await fetch('/cards.json');
+        if (!resp.ok) throw new Error('Network response was not ok');
+        adminAllCards = await resp.json();
+        adminKeptCards = [];
+        adminIndex = 0;
+        updateAdminUI();
+      } catch (e) {
+        $('admin-card-text').innerHTML = `Erreur de chargement: ${e.message}`;
+      }
+    }
+
+    function updateAdminUI() {
+      if (adminIndex >= adminAllCards.length) {
+        $('admin-counter').textContent = `Terminé ! ${adminKeptCards.length} cartes gardées.`;
+        $('admin-card-text').innerHTML = '✅ Tu as fait le tour de toutes les cartes !<br>Copie ton JSON.';
+        $('admin-actions').style.display = 'none';
+        $('admin-export').value = JSON.stringify(adminKeptCards, null, 2);
+        return;
+      }
+      $('admin-actions').style.display = 'flex';
+      const c = adminAllCards[adminIndex];
+      $('admin-counter').textContent = `Review : ${adminIndex + 1} / ${adminAllCards.length} (🏆 Gardées: ${adminKeptCards.length})`;
+
+      let t = esc(c.text);
+      t = t.replace(/{joueur oppos[eé]}/gi, '<span style="color:#ff8c00;font-weight:900;">NOAH</span>');
+      t = t.replace(/{F}/gi, '<span style="color:#ff416c;font-weight:900;">RACHELLE / LOUISE</span>');
+      t = t.replace(/{M}/gi, '<span style="color:#00d2ff;font-weight:900;">LUCA / NOAH</span>');
+      t = t.replace(/{autre}/gi, '<span style="color:#a855f7;font-weight:900;">LOUISE</span>');
+      t = t.replace(/{lecteur}/gi, '<span style="color:var(--muted);font-weight:900;">LE LECTEUR</span>');
+
+      let colors = { 'glacé': '#00d2ff', 'froid': '#0084ff', 'chaud': '#ff8c00', 'très chaud': '#ff3333', 'extrême': '#8b0000' };
+      $('admin-card-text').innerHTML = `<span style="color:${colors[c.type] || '#fff'};font-size:0.8rem;">[${c.type.toUpperCase()} - Int: ${c.intensity} - Gorgées: ${c.sips}]</span><br><br>${t}`;
+
+      $('admin-export').value = JSON.stringify(adminKeptCards, null, 2);
+    }
+
+    $('btn-admin-keep')?.addEventListener('click', () => {
+      if (adminIndex < adminAllCards.length) {
+        adminKeptCards.push(adminAllCards[adminIndex]);
+        adminIndex++;
+        updateAdminUI();
+      }
+    });
+
+    $('btn-admin-remove')?.addEventListener('click', () => {
+      if (adminIndex < adminAllCards.length) {
+        adminIndex++;
+        updateAdminUI();
+      }
+    });
+
+    window.copyAdminJson = function () {
+      const el = $('admin-export');
+      el.select();
+      document.execCommand('copy');
+      toast('✅ JSON copié !');
+    };
 
     showScreen('home');
   </script>

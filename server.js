@@ -44,6 +44,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Serve cards database for admin UI
+app.get('/cards.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'cards.json'));
+});
+
 // ─────────────────────────────────────────────────────────────
 //  Modèle de données en mémoire
 // ─────────────────────────────────────────────────────────────
