@@ -85,7 +85,7 @@
         "type": "froid",
         "intensity": 3,
         "sips": 2,
-        "text": "As-tu déjà eu un crush secret sur quelqu'un ici ? {lecteur} devine !"
+        "text": "As-tu déjà eu un crush secret sur quelqu'un ici ?"
     },
     {
         "id": 12,
@@ -685,6 +685,6 @@
         "type": "extrême",
         "intensity": 10,
         "sips": 5,
-        "text": "Quel est ton plus grand regret sexuel ? {lecteur} commente !"
+        "text": "Quel est ton plus grand regret sexuel ?"
     }
 ]
