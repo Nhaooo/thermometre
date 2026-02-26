@@ -11,6 +11,21 @@ const { Server } = require('socket.io');
 const path = require('path');
 const QRCode = require('qrcode');
 
+// --- DATABASE DE CARTES MOCKUP ---
+// On simule 10 cartes. Plus tard tu en mettras 100 via JSON.
+const CARDS = [
+  { id: 1, type: "question", intensity: 2, text: "Si tu devais échanger ta vie avec quelqu'un ici pour 24h, qui choisirais-tu, {joueur} ?", category: "cold" },
+  { id: 2, type: "gage", intensity: 8, text: "{joueur}, tu dois faire un massage des épaules à la personne à ta droite de 30 secondes.", category: "hot" },
+  { id: 3, type: "question", intensity: 14, text: "{joueur}, cite la chose physique qui t'attire le plus chez la personne qui a tiré cette carte.", category: "hot" },
+  { id: 4, type: "gage", intensity: 18, text: "{joueur}, embrasse dans le cou la personne de ton choix pendant 3 secondes.", category: "GH" },
+  { id: 5, type: "gage", intensity: 5, text: "{joueur}, imite le cri d'un animal aléatoire le plus fort possible.", category: "G" },
+  { id: 6, type: "gage", intensity: 10, text: "{joueur}, bois 3 gorgées sans utiliser tes mains.", category: "hot" },
+  { id: 7, type: "question", intensity: 3, text: "{joueur}, qui dans cette pièce a le plus de chances de finir en prison et pourquoi ?", category: "cold" },
+  { id: 8, type: "gage", intensity: 12, text: "{joueur}, fais un compliment charnel à la personne en face de toi.", category: "hot" },
+  { id: 9, type: "gage", intensity: 20, text: "{joueur}, enlève un vêtement (au choix).", category: "barred" },
+  { id: 10, type: "question", intensity: 1, text: "{joueur}, quel est ton fantasme secret innocent ?", category: "cold" }
+];
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -132,7 +147,9 @@ function sanitize(game) {
     players: game.players,
     currentPlayerIndex: game.currentPlayerIndex,
     diceValue: game.diceValue,
-    board: BOARD
+    board: BOARD,
+    qrUrl: game.qrUrl,
+    pendingCardDraw: game.pendingCardDraw
   };
 }
 
@@ -293,11 +310,62 @@ io.on('connection', (socket) => {
 
     const square = BOARD[newPos];
     console.log(`[ROLL] ${currentPlayer.name} lance ${dice} → case ${newPos} (${square.type})`);
+
+    // Si la partie est finie, on évite le card draw
+    if (game.phase === 'finished' || square.type === 'start') {
+      broadcastGame(game);
+      callback?.({ ok: true, dice, square });
+      return;
+    }
+
+    // --- CARDS DRAW LOGIC ---
+    // Trouver l'intensité approximative de la case
+    let targetIntensity = 5;
+    if (square.type === 'cold') targetIntensity = 4;
+    else if (square.type === 'G') targetIntensity = 7;
+    else if (square.type === 'GF') targetIntensity = 6;
+    else if (square.type === 'hot') targetIntensity = 12;
+    else if (square.type === 'GH') targetIntensity = 16;
+    if (square.barred) targetIntensity += 4; // BUMP up the heat.
+
+    // Piocher 5 cartes aléatoires dans notre base (pour l'instant full random parmis les cartes dispos)
+    // Idéalement triées autour de `targetIntensity`.
+    const shuffledCards = [...CARDS].sort(() => 0.5 - Math.random());
+    const drawnCards = shuffledCards.slice(0, 5);
+
+    // Pick a picker (another player randomly, if alone pick oneself)
+    const otherPlayers = game.players.filter(p => p.id !== currentPlayer.id);
+    const picker = otherPlayers.length > 0 ? otherPlayers[Math.floor(Math.random() * otherPlayers.length)] : currentPlayer;
+
+    game.pendingCardDraw = {
+      pickerId: picker.id,
+      pickerName: picker.name,
+      targetPlayerId: currentPlayer.id,
+      targetName: currentPlayer.name,
+      cards: drawnCards,
+      selected: null
+    };
+
     broadcastGame(game);
     callback?.({ ok: true, dice, square });
   });
 
-  // ── Fin du tour ───────────────────────────────────────────
+  // ── Sélection de carte ─────────────────────────────────────
+  socket.on('select_card', ({ cardId }, callback) => {
+    const game = getGame(socket.data.gameCode);
+    if (!game || !game.pendingCardDraw) return;
+    if (game.pendingCardDraw.pickerId !== socket.id) return callback?.({ ok: false });
+
+    const card = game.pendingCardDraw.cards.find(c => c.id === cardId);
+    if (card) {
+      game.pendingCardDraw.selected = card;
+      console.log(`[CARD] ${game.pendingCardDraw.pickerName} a pioché la carte "${card.text}" pour ${game.pendingCardDraw.targetName}`);
+      broadcastGame(game);
+      callback?.({ ok: true });
+    }
+  });
+
+  // ── Fin de tour ───────────────────────────────────────────
   socket.on('end_turn', () => {
     const game = getGame(socket.data.gameCode);
     if (!game || game.phase !== 'playing') return;
@@ -307,9 +375,9 @@ io.on('connection', (socket) => {
     // Met à jour isActive
     game.players.forEach(p => { p.isActive = false; });
     const nextIdx = (game.currentPlayerIndex + 1) % game.players.length;
-    game.players[nextIdx].isActive = true;
     game.currentPlayerIndex = nextIdx;
     game.diceValue = null;
+    game.pendingCardDraw = null;
     broadcastGame(game);
   });
 

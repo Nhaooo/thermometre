@@ -616,6 +616,84 @@
       color: var(--joker);
     }
 
+    /* CARTES À PIOCHER */
+    #modal-box .cards-container {
+      display: flex;
+      gap: 0.8rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 1.5rem 0;
+    }
+
+    .pick-card {
+      width: 60px;
+      height: 90px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .pick-card:hover {
+      transform: translateY(-8px) scale(1.05);
+      box-shadow: 0 12px 24px rgba(0, 210, 255, 0.4);
+      border-color: rgba(0, 210, 255, 0.8);
+    }
+
+    .pick-card.flipping {
+      transform: rotateY(90deg) scale(1.1);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* CARTE RÉVÉLÉE */
+    .revealed-card {
+      background: linear-gradient(135deg, rgba(20, 15, 30, 0.9), rgba(10, 5, 15, 0.95));
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 1.2rem;
+      padding: 1.5rem;
+      margin: 1.2rem 0;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .revealed-intensity {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.8rem;
+    }
+
+    .intens-soft {
+      background: rgba(0, 210, 255, 0.2);
+      color: #00d2ff;
+    }
+
+    .intens-mid {
+      background: rgba(168, 85, 247, 0.2);
+      color: #a855f7;
+    }
+
+    .intens-hot {
+      background: rgba(255, 51, 51, 0.2);
+      color: #ff3333;
+    }
+
+    .intens-extreme {
+      background: rgba(255, 140, 0, 0.2);
+      color: #ff8c00;
+      box-shadow: 0 0 12px rgba(255, 140, 0, 0.5);
+    }
+
     /* FINISH */
     #confetti-canvas {
       position: fixed;
@@ -1038,7 +1116,7 @@
       if (mob) {
         const mc = $('mob-cur'); mc.textContent = cur?.name || '…'; mc.style.color = cur?.color || '#fff';
         if (rolled) $('dice-mob').textContent = FACES[state.diceValue - 1];
-        setBtns($('btn-roll-mob'), $('btn-end-turn-mob'), isMyTurn, rolled);
+        setBtns($('btn-roll-mob'), $('btn-end-turn-mob'), isMyTurn, rolled, state.pendingCardDraw);
         const me = state.players.find(p => p.id === myId);
         $('btn-joker-mob').disabled = me?.jokerUsed; $('btn-joker-mob').className = 'btn btn-joker btn-sm' + (me?.jokerUsed ? ' btn-disabled' : '');
       } else {
@@ -1046,17 +1124,95 @@
         state.players.forEach((p, i) => { const d = document.createElement('div'); d.className = 'side-player' + (i === state.currentPlayerIndex ? ' active' : ''); d.innerHTML = '<div class="side-dot" style="background:' + p.color + '"></div><span class="side-name">' + esc(p.name) + '</span><span style="font-size:.68rem;color:var(--muted)">' + p.position + '/35</span>' + (p.jokerUsed ? '' : '<span class="joker-badge">🤡</span>'); sp.appendChild(d); });
         const cn = $('cur-player-name'); cn.textContent = cur?.name || '…'; cn.style.color = cur?.color || '#fff';
         if (rolled) $('dice-el').textContent = FACES[state.diceValue - 1];
-        setBtns($('btn-roll'), $('btn-end-turn'), isMyTurn, rolled);
+        setBtns($('btn-roll'), $('btn-end-turn'), isMyTurn, rolled, state.pendingCardDraw);
         const me = state.players.find(p => p.id === myId);
         $('btn-joker').disabled = me?.jokerUsed; $('btn-joker').className = 'btn btn-joker btn-sm' + (me?.jokerUsed ? ' btn-disabled' : '');
         $('joker-status').textContent = me?.jokerUsed ? 'Joker utilisé ❌' : 'Joker disponible ✅';
       }
       updateTokens(state.players, state.board);
+
+      // ── LOGIQUE DES CARTES (PIOCHE / RÉVÉLATION) ──
+      const pending = state.pendingCardDraw;
+      if (pending && rolled) {
+        if (!pending.selected) {
+          // Attente d'une pioche
+          if (myId === pending.pickerId) {
+            const pickKey = pending.pickerId + '_' + state.diceValue;
+            if (window.lastPickerKey !== pickKey) {
+              window.lastPickerKey = pickKey;
+              // On laisse un petit délai (600ms) pour que l'animation du jeton se finisse
+              setTimeout(() => {
+                showPickerModal(pending.targetName, pending.cards);
+              }, 600);
+            }
+          } else {
+            // Afficher toast en attente si je suis le joueur ciblé ou autre (Optionnel)
+            // if (myId === pending.targetPlayerId) { }
+          }
+        } else {
+          // La carte a été choisie, on affiche la grande révélation à tout le monde !
+          const revealKey = pending.selected.id + '_' + pending.pickerId + '_' + state.diceValue;
+          if (window.lastRevealKey !== revealKey) {
+            window.lastRevealKey = revealKey;
+            setTimeout(() => {
+              showRevealedModal(pending.selected, pending.pickerName, pending.targetName);
+            }, myId === pending.pickerId ? 100 : 500);
+          }
+        }
+      }
     }
-    function setBtns(rollBtn, endBtn, isMyTurn, rolled) {
+    function setBtns(rollBtn, endBtn, isMyTurn, rolled, pendingCardDraw) {
       rollBtn.className = 'btn btn-hot btn-sm' + (isMyTurn && !rolled ? '' : ' btn-disabled');
       rollBtn.disabled = !(isMyTurn && !rolled);
-      endBtn.style.display = (isMyTurn && rolled) ? '' : 'none';
+      const isWaitingCard = (pendingCardDraw && !pendingCardDraw.selected);
+      endBtn.style.display = (isMyTurn && rolled && !isWaitingCard) ? '' : 'none';
+    }
+
+    // ── FONCTIONS D'INTERFACE DES CARTES ──
+    window.pickCard = function (cardId, el) {
+      if (window.cardPickedActive) return;
+      window.cardPickedActive = true;
+      el.classList.add('flipping');
+      setTimeout(() => {
+        socket.emit('select_card', { cardId });
+        closeModal();
+      }, 400);
+    }
+
+    function showPickerModal(targetName, cards) {
+      window.cardPickedActive = false;
+      let cardsHTML = `<div class="cards-container">`;
+      cards.forEach(c => {
+        cardsHTML += `<div class="pick-card" onclick="pickCard(${c.id}, this)">❓</div>`;
+      });
+      cardsHTML += `</div><p style="font-size:0.85rem;color:var(--muted)">Clique sur une carte pour sceller le sort de <b>${targetName}</b> !</p>`;
+      openModal('🔮', 'À TOI DE JOUER !', cardsHTML, '', []);
+    }
+
+    function getIntensityDetails(intensity) {
+      if (intensity <= 5) return { label: 'Soft 🧊', cls: 'intens-soft' };
+      if (intensity <= 10) return { label: 'Medium 🌶️', cls: 'intens-mid' };
+      if (intensity <= 15) return { label: 'Hot 🔥', cls: 'intens-hot' };
+      return { label: 'Extrême 🌋', cls: 'intens-extreme' };
+    }
+
+    function showRevealedModal(card, pickerName, targetName) {
+      const intensity = getIntensityDetails(card.intensity);
+      const textHtml = card.text.replaceAll('{joueur}', `<span style="color:#ff416c;font-weight:900;">${targetName}</span>`);
+      const content = `
+        <div class="revealed-card">
+          <div class="revealed-intensity ${intensity.cls}">Intensité ${card.intensity}/20 • ${intensity.label}</div>
+          <div style="font-size:1.1rem;font-weight:700;line-height:1.5;margin-bottom:1rem;color:white;">
+            ${textHtml}
+          </div>
+          <div style="font-size:0.8rem;color:var(--muted); font-style:italic;">
+            Carte de la destinée choisie par ${pickerName}
+          </div>
+        </div>
+      `;
+      openModal(card.type === 'gage' ? '🎯' : '💬', card.type === 'gage' ? 'GAGE !' : 'QUESTION !', content, 'modal-hot', [
+        { label: 'C\'est fait ! ✅', cls: 'btn-hot' }
+      ]);
     }
 
     // ── ANIMATION DU FAUX THERMOMETRE LOBBY ──
