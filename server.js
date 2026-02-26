@@ -144,7 +144,17 @@ function sanitize(game) {
   return {
     code: game.code,
     phase: game.phase,
-    players: game.players,
+    // Add "sex" to the allowed properties to broadcast
+    players: game.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      color: p.color,
+      ready: p.ready,
+      position: p.position,
+      jokerUsed: p.jokerUsed,
+      isActive: p.isActive,
+      sex: p.sex
+    })),
     currentPlayerIndex: game.currentPlayerIndex,
     diceValue: game.diceValue,
     board: BOARD,
@@ -168,7 +178,7 @@ io.on('connection', (socket) => {
   console.log(`[CONNECT] ${socket.id}`);
 
   // ── Créer une partie ──────────────────────────────────────
-  socket.on('create_game', ({ name }, callback) => {
+  socket.on('create_game', ({ name, sex }, callback) => {
     let code;
     do { code = generateCode(); } while (games[code]);
 
@@ -179,7 +189,8 @@ io.on('connection', (socket) => {
       ready: false,
       position: 0,
       jokerUsed: false,
-      isActive: false
+      isActive: false,
+      sex: sex || 'm'
     };
 
     games[code] = {
@@ -209,7 +220,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Rejoindre une partie ──────────────────────────────────
-  socket.on('join_game', ({ code, name }, callback) => {
+  socket.on('join_game', ({ code, name, sex }, callback) => {
     const game = getGame(code);
     if (!game) return callback({ ok: false, error: 'Partie introuvable.' });
     if (game.phase !== 'lobby') return callback({ ok: false, error: 'La partie a déjà commencé.' });
@@ -223,7 +234,8 @@ io.on('connection', (socket) => {
       ready: false,
       position: 0,
       jokerUsed: false,
-      isActive: false
+      isActive: false,
+      sex: sex || 'm'
     };
 
     game.players.push(player);

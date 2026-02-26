@@ -775,8 +775,23 @@
     <div class="logo">🌡️ Le Thermomètre</div>
     <p style="color:var(--muted);font-size:.88rem;text-align:center;">Le jeu qui chauffe les soirées entre amis 🔥❄️</p>
     <div class="card" style="width:100%;max-width:370px;display:flex;flex-direction:column;gap:.85rem;">
-      <div><label style="font-weight:700;font-size:.83rem;display:block;margin-bottom:.28rem;">Ton pseudo</label>
+      <div>
+        <label style="font-weight:700;font-size:.83rem;display:block;margin-bottom:.28rem;text-align:left;">Ton
+          pseudo</label>
         <input class="input" id="home-name" placeholder="Ex : Sophie 🌶️" maxlength="20" />
+      </div>
+
+      <div>
+        <label style="font-weight:700;font-size:.83rem;display:block;margin-bottom:.28rem;text-align:left;">Je
+          suis...</label>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-ghost" id="btn-sex-m"
+            style="flex:1; padding:0.6rem; font-size:1.2rem; border:2px solid transparent;" onclick="selectSex('m')">👦
+            Garçon</button>
+          <button class="btn btn-ghost" id="btn-sex-f"
+            style="flex:1; padding:0.6rem; font-size:1.2rem; border:2px solid transparent;" onclick="selectSex('f')">👧
+            Fille</button>
+        </div>
       </div>
       <button class="btn btn-hot" id="btn-create">🔥 Créer une partie</button>
       <div style="display:flex;align-items:center;gap:.45rem;color:var(--muted);">
@@ -1286,9 +1301,42 @@
     function doEnd() { socket.emit('end_turn'); $('btn-end-turn').style.display = 'none'; $('btn-end-turn-mob').style.display = 'none'; }
     function doJoker() { socket.emit('use_joker', res => { if (!res?.ok) toast('❌ ' + (res?.error || 'Erreur')); else toast('🤡 Joker déployé !'); }); }
 
-    // ── BOUTONS ──
-    $('btn-create').onclick = () => { const name = $('home-name').value.trim(); if (!name) { toast('⚠️ Entre ton pseudo !'); return; } socket.emit('create_game', { name }, res => { if (!res.ok) { toast('❌ ' + res.error); return; } myGameCode = res.code; showScreen('lobby'); $('lobby-code').textContent = res.code; }); };
-    function joinGame() { const name = $('home-name').value.trim(), code = $('home-code').value.trim(); if (!name) { toast('⚠️ Entre ton pseudo !'); return; } if (code.length !== 6) { toast('⚠️ Code invalide'); return; } socket.emit('join_game', { code, name }, res => { if (!res.ok) { toast('❌ ' + res.error); return; } myGameCode = res.code; showScreen('lobby'); $('lobby-code').textContent = res.code; }); }
+    // ── BOUTONS ACCUEIL & GENDER SELECTION ──
+    let selectedSex = null;
+    window.selectSex = function (sx) {
+      selectedSex = sx;
+      $('btn-sex-m').style.borderColor = sx === 'm' ? '#00d2ff' : 'transparent';
+      $('btn-sex-m').style.background = sx === 'm' ? 'rgba(0, 210, 255, 0.15)' : '';
+      $('btn-sex-f').style.borderColor = sx === 'f' ? '#ff416c' : 'transparent';
+      $('btn-sex-f').style.background = sx === 'f' ? 'rgba(255, 65, 108, 0.15)' : '';
+    };
+
+    $('btn-create').onclick = () => {
+      const name = $('home-name').value.trim();
+      if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
+      if (!selectedSex) { toast('⚠️ Choisis si tu es Fille ou Garçon !'); return; }
+      socket.emit('create_game', { name, sex: selectedSex }, res => {
+        if (!res.ok) { toast('❌ ' + res.error); return; }
+        myGameCode = res.code;
+        showScreen('lobby');
+        $('lobby-code').textContent = res.code;
+      });
+    };
+
+    function joinGame() {
+      const name = $('home-name').value.trim();
+      const code = $('home-code').value.trim();
+      if (!name) { toast('⚠️ Entre ton pseudo !'); return; }
+      if (!selectedSex) { toast('⚠️ Choisis si tu es Fille ou Garçon !'); return; }
+      if (code.length !== 6) { toast('⚠️ Code invalide'); return; }
+      socket.emit('join_game', { code, name, sex: selectedSex }, res => {
+        if (!res.ok) { toast('❌ ' + res.error); return; }
+        myGameCode = res.code;
+        showScreen('lobby');
+        $('lobby-code').textContent = res.code;
+      });
+    }
+
     $('btn-join').onclick = joinGame;
     $('home-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
     $('btn-ready').onclick = () => socket.emit('player_ready');
