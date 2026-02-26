@@ -59,9 +59,10 @@ app.get('/cards.json', (req, res) => {
  *     code: string,
  *     host: socketId,
  *     phase: 'lobby' | 'playing' | 'finished',
- *     players: [{ id, name, color, ready, position, jokerUsed, isActive }],
+ *     players: [{ id, name, sex, color, ready, position, jokerUsed, isActive }],
  *     currentPlayerIndex: number,
- *     diceValue: number | null
+ *     diceValue: number | null,
+ *     playedCardsIds: Set<number>
  *   }
  * }
  */
@@ -209,7 +210,8 @@ io.on('connection', (socket) => {
       phase: 'lobby',
       players: [player],
       currentPlayerIndex: 0,
-      diceValue: null
+      diceValue: null,
+      playedCardsIds: new Set()
     };
 
     socket.join(code);
@@ -343,7 +345,15 @@ io.on('connection', (socket) => {
     // --- CARDS DRAW LOGIC ---
     // On met en place l'algorithme biaisé avec PROGRESSION DE L'INTENSITÉ !
     const progress = Math.min(newPos / TOTAL_SQUARES, 1.0); // 0.0 à 1.0
-    const shuffledCards = [...CARDS].sort(() => 0.5 - Math.random());
+    // On filtre d'abord Celles qui n'ont pas encore été jouées
+    let availableCards = CARDS.filter(c => !game.playedCardsIds.has(c.id));
+    if (availableCards.length < 5) {
+      // Si on a presque épuisé le jeu complet, on vide l'historique !
+      game.playedCardsIds.clear();
+      availableCards = [...CARDS];
+    }
+
+    const shuffledCards = [...availableCards].sort(() => 0.5 - Math.random());
 
     // Groupes par blocs d'intensité globale
     const i1 = shuffledCards.filter(c => c.intensity <= 2);
@@ -381,9 +391,13 @@ io.on('connection', (socket) => {
     // Fonction qui pioche la première carte dispo dans l'ordre de priorité des decks
     function draw(pools) {
       for (const p of pools) {
-        if (p.length > 0) return p.shift();
+        if (p.length > 0) {
+          const drawn = p.shift();
+          game.playedCardsIds.add(drawn.id); // Ajout direct à l'historique joué test !
+          return drawn;
+        }
       }
-      return CARDS[0]; // sécurité si tout est vide
+      return CARDS[0]; // sécurité si tout est vide (ne devrait jamais s'activer mtn)
     }
 
     for (let i = 0; i < 5; i++) {
