@@ -21,7 +21,7 @@
         "type": "glacé",
         "intensity": 2,
         "sips": 1,
-        "text": "Mime un baiser papillon sur la main de {M} pendant 5 secondes."
+        "text": "Mime un baiser sur la main de {M} pendant 5 secondes."
     },
     {
         "id": 4,
@@ -85,7 +85,7 @@
         "type": "froid",
         "intensity": 3,
         "sips": 2,
-        "text": "As-tu déjà eu un crush secret sur quelqu'un ici ?"
+        "text": "As-tu un crush secret sur quelqu'un ici ?"
     },
     {
         "id": 12,
@@ -93,7 +93,7 @@
         "type": "froid",
         "intensity": 4,
         "sips": 2,
-        "text": "Mime un bisou esquimau avec {F} sans contact réel."
+        "text": "Fais un bisou esquimau avec {F}."
     },
     {
         "id": 13,
@@ -109,7 +109,7 @@
         "type": "chaud",
         "intensity": 6,
         "sips": 3,
-        "text": "Mime une fellation de façon réaliste pendant 12 secondes en imaginant {M}."
+        "text": "Mime une fellation de façon réaliste pendant 12 secondes."
     },
     {
         "id": 15,
@@ -141,7 +141,7 @@
         "type": "chaud",
         "intensity": 6,
         "sips": 3,
-        "text": "Es-tu excité(e) en ce moment même ? Explique pourquoi."
+        "text": "Es-tu excité(e) en ce moment même ?"
     },
     {
         "id": 19,
@@ -205,7 +205,7 @@
         "type": "chaud",
         "intensity": 6,
         "sips": 3,
-        "text": "Mime un cunnilingus de façon réaliste pendant 12 secondes en imaginant {F}."
+        "text": "Mime un cunnilingus de façon réaliste pendant 12 secondes."
     },
     {
         "id": 27,
@@ -237,7 +237,7 @@
         "type": "chaud",
         "intensity": 6,
         "sips": 3,
-        "text": "Es-tu plus sex soft ou sex hard ? Donne un exemple."
+        "text": "Es-tu plus sex soft ou sex hard ?"
     },
     {
         "id": 31,
@@ -269,7 +269,7 @@
         "type": "chaud",
         "intensity": 5,
         "sips": 3,
-        "text": "As-tu déjà eu un rêve érotique avec quelqu'un du groupe ?"
+        "text": "Aimerais tu avoir un rêve érotique avec quelqu'un du groupe ?"
     },
     {
         "id": 35,
@@ -285,7 +285,7 @@
         "type": "chaud",
         "intensity": 5,
         "sips": 3,
-        "text": "Danse collé-serré avec {autre} pendant 15 secondes."
+        "text": "Danse sensuellement avec {autre} pendant 15 secondes."
     },
     {
         "id": 37,
@@ -301,7 +301,7 @@
         "type": "chaud",
         "intensity": 5,
         "sips": 3,
-        "text": "Mime un orgasme discret pendant 8 secondes."
+        "text": "Mime un orgasme discret."
     },
     {
         "id": 39,
@@ -317,7 +317,7 @@
         "type": "très chaud",
         "intensity": 7,
         "sips": 4,
-        "text": "Mime une position excitante avec {M} pendant 15 secondes, habillé."
+        "text": "Mime une position excitante avec {M} pendant 15 secondes."
     },
     {
         "id": 41,
@@ -341,7 +341,7 @@
         "type": "très chaud",
         "intensity": 8,
         "sips": 4,
-        "text": "Fais un lap dance à {autre} pendant 20 secondes."
+        "text": "Fais un strip-tease à {autre} pendant 20 secondes."
     },
     {
         "id": 44,
@@ -357,7 +357,7 @@
         "type": "très chaud",
         "intensity": 8,
         "sips": 4,
-        "text": "Caresses le dos de {M} par-dessus les vêtements pendant 20 secondes."
+        "text": "Caresses le dos de {M} par-dessous les vêtements pendant 20 secondes."
     },
     {
         "id": 46,
@@ -413,7 +413,7 @@
         "type": "très chaud",
         "intensity": 8,
         "sips": 4,
-        "text": "Mime une fessée coquine sur {F} sans la toucher."
+        "text": "Mets une fessée coquine sur {F}."
     },
     {
         "id": 53,
@@ -533,7 +533,7 @@
         "type": "extrême",
         "intensity": 9,
         "sips": 5,
-        "text": "Mime une scène de sexe hot avec {M} et gémissements pendant 25 secondes."
+        "text": "Mime une scène de sexe hot avec {M}."
     },
     {
         "id": 68,
@@ -549,7 +549,7 @@
         "type": "extrême",
         "intensity": 9,
         "sips": 5,
-        "text": "Montre ton visage d'orgasme en regardant {autre} pendant 10 secondes."
+        "text": "Montre ton visage d'orgasme en regardant {autre}."
     },
     {
         "id": 70,
@@ -605,7 +605,7 @@
         "type": "extrême",
         "intensity": 10,
         "sips": 5,
-        "text": "Lèches le torse de {M} par-dessus le t-shirt."
+        "text": "Lèches le torse de {M}."
     },
     {
         "id": 77,
@@ -629,7 +629,7 @@
         "type": "extrême",
         "intensity": 9,
         "sips": 5,
-        "text": "Enlève un vêtement et fais un tour sur toi-même."
+        "text": "Fais un tour sur toi-même."
     },
     {
         "id": 80,
@@ -637,7 +637,7 @@
         "type": "extrême",
         "intensity": 9,
         "sips": 5,
-        "text": "As-tu déjà eu du sexe en public ? Où ?"
+        "text": "As-tu déjà fait du sexe en public ? Où ?"
     },
     {
         "id": 81,
@@ -645,7 +645,7 @@
         "type": "extrême",
         "intensity": 10,
         "sips": 5,
-        "text": "Mime un orgasme bruyant pendant 15 secondes."
+        "text": "Mime un orgasme bruyant."
     },
     {
         "id": 82,
@@ -661,7 +661,7 @@
         "type": "extrême",
         "intensity": 10,
         "sips": 5,
-        "text": "Mime une levrette avec {autre} habillé pendant 20 secondes."
+        "text": "Mime une levrette avec {autre} pendant 20 secondes."
     },
     {
         "id": 84,
@@ -677,7 +677,7 @@
         "type": "extrême",
         "intensity": 10,
         "sips": 5,
-        "text": "Laisse {autre} te faire un massage complet par-dessus les vêtements."
+        "text": "Laisse {autre} te faire un massage complet."
     },
     {
         "id": 86,
@@ -686,5 +686,213 @@
         "intensity": 10,
         "sips": 5,
         "text": "Quel est ton plus grand regret sexuel ?"
+    },
+    {
+        "id": 87,
+        "category": "action",
+        "type": "chaud",
+        "intensity": 6,
+        "sips": 3,
+        "text": "Fais un bisou sur la nuque de {autre} en murmurant un compliment coquin."
+    },
+    {
+        "id": 88,
+        "category": "question",
+        "type": "chaud",
+        "intensity": 5,
+        "sips": 3,
+        "text": "Quelle est la partie du corps que tu préfères caresser chez quelqu'un ?"
+    },
+    {
+        "id": 89,
+        "category": "action",
+        "type": "très chaud",
+        "intensity": 7,
+        "sips": 4,
+        "text": "Laisse {M} te souffler des mots excitants à l'oreille pendant 15 secondes."
+    },
+    {
+        "id": 90,
+        "category": "question",
+        "type": "très chaud",
+        "intensity": 8,
+        "sips": 4,
+        "text": "Quelle est la chose la plus osée que tu aies faite sous la douche ?"
+    },
+    {
+        "id": 91,
+        "category": "action",
+        "type": "très chaud",
+        "intensity": 7,
+        "sips": 4,
+        "text": "Fais un massage sensuel des épaules à {F}."
+    },
+    {
+        "id": 92,
+        "category": "action",
+        "type": "très chaud",
+        "intensity": 7,
+        "sips": 4,
+        "text": "Mime une danse érotique légère devant {autre} pendant 15 secondes."
+    },
+    {
+        "id": 93,
+        "category": "question",
+        "type": "très chaud",
+        "intensity": 8,
+        "sips": 4,
+        "text": "Quel est ton endroit préféré pour un rendez-vous coquin ?"
+    },
+    {
+        "id": 94,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Laisse {autre} te mordiller doucement la lèvre pendant un baiser de 20 secondes."
+    },
+    {
+        "id": 95,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "Raconte la fois où tu as été le plus excité sans pouvoir agir."
+    },
+    {
+        "id": 96,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Caresses les cuisses intérieures de {M} par-dessus les vêtements pendant 20 secondes."
+    },
+    {
+        "id": 97,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "Quelle est ta position sexuelle la plus folle que tu rêves d'essayer ?"
+    },
+    {
+        "id": 98,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Mime un scénario BDSM soft avec {F} sans aucun accessoire."
+    },
+    {
+        "id": 99,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "As-tu déjà utilisé des menottes ou des liens ?"
+    },
+    {
+        "id": 100,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Fais un suçon visible sur le cou de {autre}."
+    },
+    {
+        "id": 101,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "Quel est le jouet sexuel que tu aimerais tester en secret ?"
+    },
+    {
+        "id": 102,
+        "category": "action",
+        "type": "chaud",
+        "intensity": 6,
+        "sips": 3,
+        "text": "Effleure les lèvres de {M} avec tes doigts pendant 10 secondes."
+    },
+    {
+        "id": 103,
+        "category": "question",
+        "type": "chaud",
+        "intensity": 5,
+        "sips": 3,
+        "text": "Quelle odeur t'excite le plus chez une personne ?"
+    },
+    {
+        "id": 104,
+        "category": "question",
+        "type": "très chaud",
+        "intensity": 8,
+        "sips": 4,
+        "text": "As-tu déjà eu un coup d'un soir ?"
+    },
+    {
+        "id": 105,
+        "category": "action",
+        "type": "très chaud",
+        "intensity": 7,
+        "sips": 4,
+        "text": "Serre {autre} contre toi et caresse son dos lentement pendant 20 secondes."
+    },
+    {
+        "id": 106,
+        "category": "question",
+        "type": "très chaud",
+        "intensity": 8,
+        "sips": 4,
+        "text": "Quelle est ta chanson préférée pour un moment intime ?"
+    },
+    {
+        "id": 107,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Mime une chevauchée sensuelle avec {M} habillé pendant 25 secondes."
+    },
+    {
+        "id": 108,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "Raconte ton rêve érotique le plus récurrent."
+    },
+    {
+        "id": 109,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Laisse {F} te griffer doucement le dos par-dessus les vêtements."
+    },
+    {
+        "id": 110,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "As-tu déjà fantasmé sur quelqu'un du même sexe ? Détails."
+    },
+    {
+        "id": 111,
+        "category": "action",
+        "type": "extrême",
+        "intensity": 9,
+        "sips": 5,
+        "text": "Fais un baiser passionné avec langue à {autre} pendant 40 secondes."
+    },
+    {
+        "id": 112,
+        "category": "question",
+        "type": "extrême",
+        "intensity": 10,
+        "sips": 5,
+        "text": "Quelle est la limite que tu n'as pas encore franchie sexuellement ?"
     }
 ]

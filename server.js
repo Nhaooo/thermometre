@@ -341,11 +341,40 @@ io.on('connection', (socket) => {
     }
 
     // --- CARDS DRAW LOGIC ---
-    // On met en place l'algorithme biaisé du thermomètre !
-    let poolCold = CARDS.filter(c => c.type === 'glacé' || c.type === 'froid').sort(() => 0.5 - Math.random());
-    let poolChaud = CARDS.filter(c => c.type === 'chaud').sort(() => 0.5 - Math.random());
-    let poolTresChaud = CARDS.filter(c => c.type === 'très chaud').sort(() => 0.5 - Math.random());
-    let poolExtreme = CARDS.filter(c => c.type === 'extrême').sort(() => 0.5 - Math.random());
+    // On met en place l'algorithme biaisé avec PROGRESSION DE L'INTENSITÉ !
+    const progress = Math.min(newPos / TOTAL_SQUARES, 1.0); // 0.0 à 1.0
+    const shuffledCards = [...CARDS].sort(() => 0.5 - Math.random());
+
+    // Groupes par blocs d'intensité globale
+    const i1 = shuffledCards.filter(c => c.intensity <= 2);
+    const i2 = shuffledCards.filter(c => c.intensity === 3 || c.intensity === 4);
+    const i3 = shuffledCards.filter(c => c.intensity === 5 || c.intensity === 6);
+    const i4 = shuffledCards.filter(c => c.intensity === 7 || c.intensity === 8);
+    const i5 = shuffledCards.filter(c => c.intensity >= 9);
+
+    let poolCold, poolChaud, poolTresChaud, poolExtreme;
+
+    if (progress <= 0.33) {
+      // DÉBUT DE PARTIE (Doux) : Pas de cartes trop intimes dès le début
+      poolCold = [...i1];               // Glacé (1-2)
+      poolChaud = [...i2];              // Froid (3-4)
+      poolTresChaud = [...i3];          // Chaud (5-6)
+      poolExtreme = [...i4];            // Très chaud (7-8) au pire
+    } else if (progress <= 0.66) {
+      // MILIEU DE PARTIE (Normal)
+      poolCold = [...i1, ...i2];        // Glacé/Froid (1-4)
+      poolChaud = [...i3];              // Chaud (5-6)
+      poolTresChaud = [...i4];          // Très chaud (7-8)
+      poolExtreme = [...i5];            // Extrême (9+)
+    } else {
+      // FIN DE PARTIE (Hardcore) : Froid modéré, Extrême vraiment ultime !
+      poolCold = [...i2, ...i3];        // Le "froid" d'ici vaut un chaud de début de partie (3-6)
+      poolChaud = [...i4];              // Le chaud devient Très Chaud (7-8)
+      poolTresChaud = [...i5];          // Le très chaud devient Extrême (9+)
+
+      const iMax = shuffledCards.filter(c => c.intensity >= 10);
+      poolExtreme = iMax.length >= 2 ? [...iMax] : [...i5]; // Niveau Max
+    }
 
     let rawCards = [];
 
