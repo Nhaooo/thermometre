@@ -211,7 +211,7 @@ io.on('connection', (socket) => {
       players: [player],
       currentPlayerIndex: 0,
       diceValue: null,
-      playedCardsIds: new Set()
+      playedCardsIds: []
     };
 
     socket.join(code);
@@ -345,11 +345,11 @@ io.on('connection', (socket) => {
     // --- CARDS DRAW LOGIC ---
     // On met en place l'algorithme biaisé avec PROGRESSION DE L'INTENSITÉ !
     const progress = Math.min(newPos / TOTAL_SQUARES, 1.0); // 0.0 à 1.0
-    // On filtre d'abord Celles qui n'ont pas encore été jouées
-    let availableCards = CARDS.filter(c => !game.playedCardsIds.has(c.id));
+    // On filtre d'abord Celles qui n'ont pas encore été jouées récemment
+    let availableCards = CARDS.filter(c => !game.playedCardsIds.includes(c.id));
     if (availableCards.length < 5) {
       // Si on a presque épuisé le jeu complet, on vide l'historique !
-      game.playedCardsIds.clear();
+      game.playedCardsIds = [];
       availableCards = [...CARDS];
     }
 
@@ -393,11 +393,17 @@ io.on('connection', (socket) => {
       for (const p of pools) {
         if (p.length > 0) {
           const drawn = p.shift();
-          game.playedCardsIds.add(drawn.id); // Ajout direct à l'historique joué test !
+
+          // Ajout à l'historique récent (on bannit les 35 prochaines cartes piochées, donc ~7 tours)
+          game.playedCardsIds.push(drawn.id);
+          if (game.playedCardsIds.length > 35) {
+            game.playedCardsIds.shift();
+          }
+
           return drawn;
         }
       }
-      return CARDS[0]; // sécurité si tout est vide (ne devrait jamais s'activer mtn)
+      return CARDS[0]; // sécurité
     }
 
     for (let i = 0; i < 5; i++) {
