@@ -87,7 +87,7 @@ const BOARD = [
   // Row 0
   { id: 0, type: 'start', label: 'START' },
   { id: 1, type: 'cold', label: '❄️' },
-  { id: 2, type: 'cold', label: '❄️' },
+  { id: 2, type: 'GF', label: 'GF' },
   { id: 3, type: 'cold', label: '❄️' },
   { id: 4, type: 'hot', label: '🔥' },
   { id: 5, type: 'hot', label: '🔥', barred: true },
@@ -98,7 +98,7 @@ const BOARD = [
   { id: 9, type: 'GF', label: 'GF' },
   { id: 10, type: 'G', label: 'G' },
   { id: 11, type: 'cold', label: '❄️' },
-  { id: 12, type: 'cold', label: '❄️' },
+  { id: 12, type: 'G', label: 'G' },
   { id: 13, type: 'cold', label: '❄️' },
   // Row 2
   { id: 14, type: 'GH', label: 'GH' },
@@ -107,7 +107,7 @@ const BOARD = [
   { id: 17, type: 'G', label: 'G' },
   { id: 18, type: 'hot', label: '🔥' },
   { id: 19, type: 'hot', label: '🔥', barred: true },
-  { id: 20, type: 'hot', label: '🔥' },
+  { id: 20, type: 'GH', label: 'GH' },
   // Row 3
   { id: 21, type: 'hot', label: '🔥' },
   { id: 22, type: 'hot', label: '🔥', barred: true },
@@ -120,7 +120,7 @@ const BOARD = [
   { id: 28, type: 'GH', label: 'GH' },
   { id: 29, type: 'cold', label: '❄️' },
   { id: 30, type: 'cold', label: '❄️' },
-  { id: 31, type: 'hot', label: '🔥' },
+  { id: 31, type: 'hot', label: '🔥', barred: true },
   { id: 32, type: 'hot', label: '🔥', barred: true },
   { id: 33, type: 'hot', label: '🔥', barred: true },
   { id: 34, type: 'hot', label: '🔥' },
@@ -309,8 +309,8 @@ io.on('connection', (socket) => {
       }
     }
 
-    // S'il y a des pièges à moins de 6 cases, on a 35% de chance brut de forcer le dé à aller dessus
-    if (trapRolls.length > 0 && Math.random() < 0.35) {
+    // S'il y a des pièges à moins de 6 cases, on a 66% de chance brut de forcer le dé à aller dessus (2 fois sur 3)
+    if (trapRolls.length > 0 && Math.random() < 0.48) {
       dice = trapRolls[Math.floor(Math.random() * trapRolls.length)];
       console.log(`[KARMA] Le serveur a truqué le dé pour faire tomber ${currentPlayer.name} (pos ${pos}) sur le piège à ${dice} cases !`);
     }
@@ -355,12 +355,12 @@ io.on('connection', (socket) => {
 
     const shuffledCards = [...availableCards].sort(() => 0.5 - Math.random());
 
-    
+
     // On sépare Actions (Lettres/Barré) et Questions (Neutre)
     const isActionSquare = square.barred || ['G', 'GH', 'GF'].includes(square.type);
     const requiredCategory = isActionSquare ? 'action' : 'question';
     let usableCards = shuffledCards.filter(c => c.category === requiredCategory);
-    
+
     // Sécurité: si on n'a plus assez de cartes (ne devrait pas arriver avec l'historique de 35)
     if (usableCards.length < 5) usableCards = shuffledCards;
 
@@ -374,26 +374,26 @@ io.on('connection', (socket) => {
     let pGlace, pFroid, pChaud, pTresChaud, pExtreme;
 
     if (progress <= 0.33) {
-      // DÉBUT DE PARTIE (Doux) : Pas de cartes trop intimes dès le début
-      pGlace = [...i1];
-      pFroid = [...i2];
-      pChaud = [...i3];
-      pTresChaud = [...i4];
-      pExtreme = [...i4]; // Extrême bridé au Très Chaud max en début de partie
-    } else if (progress <= 0.66) {
-      // MILIEU DE PARTIE (Normal)
+      // DÉBUT DE PARTIE (Chaud dès le début comme demandé !)
       pGlace = [...i1, ...i2];
-      pFroid = [...i2];
-      pChaud = [...i3];
-      pTresChaud = [...i4];
+      pFroid = [...i2, ...i3];
+      pChaud = [...i3, ...i4];
+      pTresChaud = [...i4, ...i5];
+      pExtreme = [...i5]; // On lâche déjà les extrêmes pour les cases barrées !
+    } else if (progress <= 0.66) {
+      // MILIEU DE PARTIE
+      pGlace = [...i2];
+      pFroid = [...i3];
+      pChaud = [...i4];
+      pTresChaud = [...i5];
       pExtreme = [...i5];
     } else {
-      // FIN DE PARTIE (Hardcore) : Froid modéré, Extrême vraiment ultime !
-      pGlace = [...i2];        
-      pFroid = [...i3];        
-      pChaud = [...i4];        
-      pTresChaud = [...i5];    
-      
+      // FIN DE PARTIE (Hardcore !)
+      pGlace = [...i3];
+      pFroid = [...i4];
+      pChaud = [...i5];
+      pTresChaud = [...i5];
+
       const iMax = usableCards.filter(c => c.intensity >= 10);
       pExtreme = iMax.length >= 2 ? [...iMax] : [...i5];
     }
@@ -403,19 +403,19 @@ io.on('connection', (socket) => {
     // Fonction qui pioche la première carte dispo dans l'ordre de priorité des decks
     function draw(pools) {
       for (const p of pools) {
-        if (p.length > 0) {
+        if (p && p.length > 0) {
           const drawn = p.shift();
 
-          // Ajout à l'historique récent (on bannit les 35 prochaines cartes piochées, donc ~7 tours)
+          // Ajout à l'historique récent (on bannit pratiquement toutes les cartes précédentes)
           game.playedCardsIds.push(drawn.id);
-          if (game.playedCardsIds.length > 35) {
+          if (game.playedCardsIds.length > 200) {
             game.playedCardsIds.shift();
           }
 
           return drawn;
         }
       }
-      return CARDS[0]; // sécurité
+      return usableCards[Math.floor(Math.random() * usableCards.length)] || CARDS[0]; // sécurité
     }
 
     for (let i = 0; i < 5; i++) {

@@ -1235,16 +1235,7 @@
       openModal('🔮', 'À TOI DE JOUER !', cardsHTML, '', []);
     }
 
-    function getIntensityDetails(intensity) {
-      if (intensity <= 5) return { label: 'Soft 🧊', cls: 'intens-soft' };
-      if (intensity <= 10) return { label: 'Medium 🌶️', cls: 'intens-mid' };
-      if (intensity <= 15) return { label: 'Hot 🔥', cls: 'intens-hot' };
-      return { label: 'Extrême 🌋', cls: 'intens-extreme' };
-    }
-
     function showRevealedModal(card, pickerName, targetName) {
-      const intensity = getIntensityDetails(card.intensity);
-
       let safeText = esc(card.text);
       if (!safeText.includes('[[') && !safeText.includes('{joueur}')) {
         safeText = "[[{joueur}]], " + safeText;
@@ -1258,7 +1249,6 @@
 
       const content = `
         <div class="revealed-card">
-          <div class="revealed-intensity ${intensity.cls}">Intensité ${card.intensity}/20 • ${intensity.label}</div>
           <div style="font-size:1.1rem;font-weight:700;line-height:1.5;margin-bottom:1rem;color:white;">
             ${textHtml}
           </div>
