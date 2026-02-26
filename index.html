@@ -1137,11 +1137,13 @@
       applyTransform();
     }
 
+    const FOCUS_ZOOM = 2.0; // zoom fixe quand on suit un joueur
     function cameraFocusCell(idx) {
       if (!cellPositions[idx]) return;
       const col = $('game-board-col');
       const p = cellPositions[idx];
       const cx = p.x + CELL_SZ / 2, cy = p.y + CELL_SZ / 2;
+      camScale = FOCUS_ZOOM;
       camX = col.offsetWidth / 2 - cx * camScale;
       camY = col.offsetHeight / 2 - cy * camScale;
       applyTransform();
@@ -1306,17 +1308,69 @@
         world.appendChild(div);
       });
 
-      // Init camera
-      setTimeout(() => boardCenter(), 50);
+      // Init camera : zoom direct sur le joueur courant si partie en cours, sinon vue globale
+      setTimeout(() => {
+        if (currentState?.phase === 'playing') {
+          const cur = currentState.players?.[currentState.currentPlayerIndex];
+          if (cur != null) { cameraFocusCell(cur.position); return; }
+        }
+        boardCenter();
+      }, 50);
 
       // Pan + zoom events
       const col = $('game-board-col');
+      // ── Touch/Pan/Zoom avec perf mobile optimisée ──
+      let colRect = null; // caché pour éviter getBoundingClientRect() dans touchmove
+      let rafId = null;
+      function scheduleTransform() {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => { applyTransform(); rafId = null; });
+      }
+
       col.addEventListener('mousedown', e => { if (e.button !== 0) return; dragging = true; dragSX = e.clientX; dragSY = e.clientY; dragCX = camX; dragCY = camY; });
-      window.addEventListener('mousemove', e => { if (!dragging) return; camX = dragCX + e.clientX - dragSX; camY = dragCY + e.clientY - dragSY; applyTransform(); });
+      window.addEventListener('mousemove', e => { if (!dragging) return; camX = dragCX + e.clientX - dragSX; camY = dragCY + e.clientY - dragSY; scheduleTransform(); });
       window.addEventListener('mouseup', () => { dragging = false; });
-      col.addEventListener('wheel', e => { e.preventDefault(); const delta = e.deltaY > 0 ? -0.12 : 0.12; const rect = col.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top; const newScale = Math.max(0.3, Math.min(2.5, camScale + delta)); camX = mx - (mx - camX) * (newScale / camScale); camY = my - (my - camY) * (newScale / camScale); camScale = newScale; applyTransform(); }, { passive: false });
-      col.addEventListener('touchstart', e => { if (e.touches.length === 1) { dragging = true; dragSX = e.touches[0].clientX; dragSY = e.touches[0].clientY; dragCX = camX; dragCY = camY; } else if (e.touches.length === 2) { dragging = false; pinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); pinchScale0 = camScale; } }, { passive: true });
-      col.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.length === 1 && dragging) { camX = dragCX + e.touches[0].clientX - dragSX; camY = dragCY + e.touches[0].clientY - dragSY; applyTransform(); } else if (e.touches.length === 2 && pinchDist0) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); const newScale = Math.max(0.3, Math.min(2.5, pinchScale0 * d / pinchDist0)); const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - col.getBoundingClientRect().left; const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - col.getBoundingClientRect().top; camX = mx - (mx - camX) * (newScale / camScale); camY = my - (my - camY) * (newScale / camScale); camScale = newScale; applyTransform(); } }, { passive: false });
+      col.addEventListener('wheel', e => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.12 : 0.12;
+        const rect = col.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const newScale = Math.max(0.3, Math.min(2.5, camScale + delta));
+        camX = mx - (mx - camX) * (newScale / camScale);
+        camY = my - (my - camY) * (newScale / camScale);
+        camScale = newScale;
+        scheduleTransform();
+      }, { passive: false });
+      col.addEventListener('touchstart', e => {
+        colRect = col.getBoundingClientRect(); // cache ici, une seule fois
+        if (e.touches.length === 1) {
+          dragging = true;
+          dragSX = e.touches[0].clientX; dragSY = e.touches[0].clientY;
+          dragCX = camX; dragCY = camY;
+        } else if (e.touches.length === 2) {
+          dragging = false;
+          pinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          pinchScale0 = camScale;
+        }
+      }, { passive: true });
+      col.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (e.touches.length === 1 && dragging) {
+          camX = dragCX + e.touches[0].clientX - dragSX;
+          camY = dragCY + e.touches[0].clientY - dragSY;
+          scheduleTransform();
+        } else if (e.touches.length === 2 && pinchDist0) {
+          const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          const newScale = Math.max(0.3, Math.min(2.5, pinchScale0 * d / pinchDist0));
+          // Utiliser colRect caché (pas de reflow ici !)
+          const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - (colRect ? colRect.left : 0);
+          const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - (colRect ? colRect.top : 0);
+          camX = mx - (mx - camX) * (newScale / camScale);
+          camY = my - (my - camY) * (newScale / camScale);
+          camScale = newScale;
+          scheduleTransform();
+        }
+      }, { passive: false });
       col.addEventListener('touchend', () => { dragging = false; pinchDist0 = null; });
     }
 
@@ -1465,9 +1519,8 @@
           isAnimating = true;
           animateTokenHop(mover, fromPos, toPos, () => {
             isAnimating = false;
-            // Resync final
-            updateTokens(state.players);
-            updateActiveCellHighlight();
+            // renderGame resync TOUT : tokens + UI + pendingCardDraw (modals de cartes)
+            renderGame(state);
           });
           return;
         }
